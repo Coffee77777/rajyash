@@ -204,23 +204,23 @@ if ($method === 'PATCH') {
     $req = $rq->fetch();
     if (!$req) jsonOut(['error' => 'Request not found'], 404);
 
-    // Verify driver exists
-    $dq = $pdo->prepare("SELECT id, user_id FROM drivers WHERE id = ? AND is_active = 1 LIMIT 1");
+    // Verify driver exists (driver_id = users.id)
+    $dq = $pdo->prepare("SELECT u.id FROM users u JOIN drivers d ON d.user_id = u.id WHERE u.id = ? AND u.role = 'driver' AND u.is_active = 1 LIMIT 1");
     $dq->execute([$driverId]);
     $drv = $dq->fetch();
     if (!$drv) jsonOut(['error' => 'Driver not found'], 404);
 
-    // Create or update trip
+    // Create or update trip (driver_id stores users.id)
     $tq = $pdo->prepare("SELECT id FROM trips WHERE request_id = ? LIMIT 1");
     $tq->execute([$id]);
     $trip = $tq->fetch();
 
     if ($trip) {
-        $pdo->prepare("UPDATE trips SET driver_id = ?, status = 'assigned' WHERE id = ?")
+        $pdo->prepare("UPDATE trips SET driver_id = ? WHERE id = ?")
             ->execute([$driverId, $trip['id']]);
         $tripId = $trip['id'];
     } else {
-        $pdo->prepare("INSERT INTO trips (request_id, driver_id, status) VALUES (?,?,'assigned')")
+        $pdo->prepare("INSERT INTO trips (request_id, driver_id) VALUES (?,?)")
             ->execute([$id, $driverId]);
         $tripId = (int)$pdo->lastInsertId();
     }
