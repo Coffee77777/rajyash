@@ -27,6 +27,7 @@ const STEPS = [
 
 const NEXT_ACTION: Record<string, { label: string; next: string; color: string }> = {
   assigned:     { label: 'Start Ride',      next: 'ride_started', color: '#f97316' },
+  accepted:     { label: 'Start Ride',      next: 'ride_started', color: '#f97316' },
   ride_started: { label: 'Mark Picked Up',  next: 'picked_up',    color: '#06b6d4' },
   picked_up:    { label: 'Mark Delivered',  next: 'delivered',    color: '#22c55e' },
 };
@@ -331,14 +332,15 @@ export default function DriverPage() {
 
   const TRIP_STATUS_COLOR: Record<string, { bg: string; text: string; dot: string }> = {
     assigned:     { bg:'#fef9ec', text:'#92400e', dot:'#f59e0b' },
+    accepted:     { bg:'#eef2ff', text:'#3730a3', dot:'#6366f1' },
     ride_started: { bg:'#fff7ed', text:'#9a3412', dot:'#f97316' },
     picked_up:    { bg:'#ecfeff', text:'#155e75', dot:'#06b6d4' },
     delivered:    { bg:'#f0fdf4', text:'#166534', dot:'#22c55e' },
     cancelled:    { bg:'#f9fafb', text:'#4b5563', dot:'#9ca3af' },
   };
   const TRIP_STATUS_LABEL: Record<string, string> = {
-    assigned:'Assigned', ride_started:'On the Way', picked_up:'Picked Up',
-    delivered:'Delivered', cancelled:'Cancelled',
+    assigned:'Assigned', accepted:'Accepted', ride_started:'On the Way',
+    picked_up:'Picked Up', delivered:'Delivered', cancelled:'Cancelled',
   };
 
   return (

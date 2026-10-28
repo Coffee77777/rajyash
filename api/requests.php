@@ -186,7 +186,7 @@ if ($method === 'PUT') {
     $pdo->prepare("UPDATE requests SET status = ? WHERE id = ?")->execute([$status, $id]);
 
     // Sync trip status if an associated trip exists
-    $tripStatuses = ['assigned','ride_started','picked_up','delivered','cancelled'];
+    $tripStatuses = ['assigned','accepted','ride_started','picked_up','delivered','cancelled'];
     if (in_array($status, $tripStatuses, true)) {
         $pdo->prepare("UPDATE trips SET status = ? WHERE request_id = ?")->execute([$status, $id]);
     }
