@@ -180,6 +180,13 @@ if ($method === 'PUT') {
     if (!$row) jsonOut(['error' => 'Request not found'], 404);
 
     $pdo->prepare("UPDATE requests SET status = ? WHERE id = ?")->execute([$status, $id]);
+
+    // Sync trip status if an associated trip exists
+    $tripStatuses = ['assigned','ride_started','picked_up','delivered','cancelled'];
+    if (in_array($status, $tripStatuses, true)) {
+        $pdo->prepare("UPDATE trips SET status = ? WHERE request_id = ?")->execute([$status, $id]);
+    }
+
     auditLog($pdo, $me['sub'], 'update_status', 'requests', $id,
         ['from' => $row['status'], 'to' => $status]);
 

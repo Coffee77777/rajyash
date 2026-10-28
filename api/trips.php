@@ -65,11 +65,11 @@ if ($method === 'GET') {
             JOIN requests r   ON r.id   = t.request_id
             JOIN donors   don ON don.id = r.donor_id
             WHERE t.driver_id = ?
-              AND t.status NOT IN ('delivered','cancelled')
             ORDER BY t.created_at DESC
             LIMIT 50
         ");
         $stmt->execute([$me['sub']]);
+        // Note: returns ALL trips for the driver (active + delivered) so portal can show completed section
     }
 
     jsonOut($stmt->fetchAll());
