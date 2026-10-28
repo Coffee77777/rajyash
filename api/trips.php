@@ -80,8 +80,24 @@ if ($method === 'PUT') {
     $id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
     if (!$id) jsonOut(['error' => 'id required'], 400);
 
-    $body   = json_decode(file_get_contents('php://input'), true) ?? [];
+    // Support both JSON and multipart (for photo upload)
+    $isMultipart = strpos($_SERVER['CONTENT_TYPE'] ?? '', 'multipart') !== false;
+    $body   = $isMultipart ? $_POST : (json_decode(file_get_contents('php://input'), true) ?? []);
     $status = $body['status'] ?? '';
+
+    // Handle pickup photo upload
+    $pickupPhotoPath = null;
+    if (!empty($_FILES['pickup_photo']['tmp_name']) && $_FILES['pickup_photo']['error'] === UPLOAD_ERR_OK) {
+        $ext = strtolower(pathinfo($_FILES['pickup_photo']['name'], PATHINFO_EXTENSION));
+        if (in_array($ext, ['jpg','jpeg','png','webp'])) {
+            $uploadDir = __DIR__ . '/uploads/';
+            if (!is_dir($uploadDir)) mkdir($uploadDir, 0755, true);
+            $filename = 'pickup_' . uniqid('', true) . '.' . $ext;
+            if (move_uploaded_file($_FILES['pickup_photo']['tmp_name'], $uploadDir . $filename)) {
+                $pickupPhotoPath = 'uploads/' . $filename;
+            }
+        }
+    }
 
     $driverAllowed = ['ride_started', 'picked_up', 'delivered'];
     $adminAllowed  = ['assigned', 'ride_started', 'picked_up', 'delivered', 'cancelled'];
@@ -100,7 +116,11 @@ if ($method === 'PUT') {
         jsonOut(['error' => 'Access denied'], 403);
     }
 
-    $pdo->prepare("UPDATE trips SET status = ? WHERE id = ?")->execute([$status, $id]);
+    if ($pickupPhotoPath) {
+        $pdo->prepare("UPDATE trips SET status = ?, pickup_photo = ? WHERE id = ?")->execute([$status, $pickupPhotoPath, $id]);
+    } else {
+        $pdo->prepare("UPDATE trips SET status = ? WHERE id = ?")->execute([$status, $id]);
+    }
 
     // Mirror status to request
     $reqStatus = match($status) {

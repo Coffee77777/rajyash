@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import Image from 'next/image';
 
 const API = 'https://slipms.com/rajyash-api';
@@ -42,6 +42,13 @@ export default function DriverPage() {
   const [trips, setTrips] = useState<Trip[]>([]);
   const [loading, setLoading] = useState(false);
   const [advancing, setAdvancing] = useState<number | null>(null);
+
+  // Pickup photo modal
+  const [pickupModal, setPickupModal] = useState<Trip | null>(null);
+  const [pickupPhoto, setPickupPhoto] = useState<File | null>(null);
+  const [pickupPreview, setPickupPreview] = useState<string | null>(null);
+  const [pickupErr, setPickupErr] = useState('');
+  const pickupFileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const t = sessionStorage.getItem('rj_driver_token');
@@ -87,20 +94,62 @@ export default function DriverPage() {
     }
   }
 
-  async function advanceTrip(trip: Trip) {
+  async function advanceTrip(trip: Trip, photoFile?: File) {
     const action = NEXT_ACTION[trip.status];
     if (!action) return;
+
+    // Intercept picked_up — require photo
+    if (action.next === 'picked_up' && !photoFile) {
+      setPickupModal(trip);
+      setPickupPhoto(null);
+      setPickupPreview(null);
+      setPickupErr('');
+      return;
+    }
+
     setAdvancing(trip.id);
     try {
-      const res = await fetch(`${API}/trips.php?id=${trip.id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ status: action.next }),
-      });
-      if (res.ok) fetchTrips(token!);
+      let res: Response;
+      if (photoFile) {
+        const fd = new FormData();
+        fd.append('status', action.next);
+        fd.append('pickup_photo', photoFile);
+        res = await fetch(`${API}/trips.php?id=${trip.id}`, {
+          method: 'PUT',
+          headers: { Authorization: `Bearer ${token}` },
+          body: fd,
+        });
+      } else {
+        res = await fetch(`${API}/trips.php?id=${trip.id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ status: action.next }),
+        });
+      }
+      if (res.ok) {
+        setPickupModal(null);
+        setPickupPhoto(null);
+        setPickupPreview(null);
+        fetchTrips(token!);
+      }
     } finally {
       setAdvancing(null);
     }
+  }
+
+  function handlePickupPhoto(file: File | null) {
+    if (!file) return;
+    setPickupPhoto(file);
+    const reader = new FileReader();
+    reader.onload = e => setPickupPreview(e.target?.result as string);
+    reader.readAsDataURL(file);
+  }
+
+  async function submitPickup() {
+    if (!pickupModal) return;
+    if (!pickupPhoto) { setPickupErr('Please take or upload a photo of the food before marking as picked up.'); return; }
+    setPickupErr('');
+    await advanceTrip(pickupModal, pickupPhoto);
   }
 
   function logout() {
@@ -444,6 +493,116 @@ export default function DriverPage() {
           </>
         )}
       </div>
+
+      {/* ── PICKUP PHOTO MODAL ── */}
+      {pickupModal && (
+        <div style={{
+          position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(12px)',
+          display: 'flex', alignItems: 'flex-end', justifyContent: 'center', zIndex: 200,
+          padding: '0',
+        }} onClick={() => { setPickupModal(null); }}>
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{
+              background: '#1a1f2e', borderRadius: '24px 24px 0 0', padding: '28px 24px 40px',
+              width: '100%', maxWidth: 520,
+              border: '1px solid rgba(255,255,255,0.08)',
+            }}>
+            {/* Handle bar */}
+            <div style={{ width: 40, height: 4, background: 'rgba(255,255,255,0.15)', borderRadius: 2, margin: '0 auto 24px' }} />
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
+              <div style={{ width: 44, height: 44, borderRadius: 12, background: 'rgba(6,182,212,0.15)', border: '1px solid rgba(6,182,212,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, flexShrink: 0 }}>📦</div>
+              <div>
+                <div style={{ color: '#fff', fontWeight: 800, fontSize: 17 }}>Confirm Food Pickup</div>
+                <div style={{ color: 'rgba(255,255,255,0.45)', fontSize: 13, marginTop: 2 }}>{pickupModal.food_type} · {pickupModal.donor_name}</div>
+              </div>
+            </div>
+
+            <div style={{ color: 'rgba(255,255,255,0.55)', fontSize: 13, lineHeight: 1.6, marginBottom: 20 }}>
+              Take a clear photo of the food you&apos;re collecting. This confirms pickup and is visible to the admin.
+            </div>
+
+            {/* Hidden file input */}
+            <input
+              ref={pickupFileRef} type="file" accept="image/*" capture="environment"
+              style={{ display: 'none' }}
+              onChange={e => handlePickupPhoto(e.target.files?.[0] ?? null)}
+            />
+
+            {/* Photo area */}
+            {!pickupPreview ? (
+              <div style={{ display: 'flex', gap: 10, marginBottom: 20 }}>
+                <button
+                  onClick={() => pickupFileRef.current?.click()}
+                  style={{
+                    flex: 1, padding: '16px 12px', borderRadius: 14, border: '2px dashed rgba(6,182,212,0.4)',
+                    background: 'rgba(6,182,212,0.06)', color: '#06b6d4',
+                    fontSize: 14, fontWeight: 700, cursor: 'pointer',
+                    display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8,
+                  }}>
+                  <span style={{ fontSize: 28 }}>📸</span>
+                  Take Photo
+                </button>
+                <button
+                  onClick={() => { if (pickupFileRef.current) { pickupFileRef.current.removeAttribute('capture'); pickupFileRef.current.click(); } }}
+                  style={{
+                    flex: 1, padding: '16px 12px', borderRadius: 14, border: '2px dashed rgba(255,255,255,0.12)',
+                    background: 'rgba(255,255,255,0.03)', color: 'rgba(255,255,255,0.5)',
+                    fontSize: 14, fontWeight: 600, cursor: 'pointer',
+                    display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8,
+                  }}>
+                  <span style={{ fontSize: 28 }}>🖼️</span>
+                  Choose File
+                </button>
+              </div>
+            ) : (
+              <div style={{ position: 'relative', borderRadius: 14, overflow: 'hidden', marginBottom: 20, border: '2px solid rgba(6,182,212,0.4)' }}>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={pickupPreview} alt="Pickup" style={{ width: '100%', maxHeight: 240, objectFit: 'cover', display: 'block' }} />
+                <div style={{ position: 'absolute', top: 8, right: 8, display: 'flex', gap: 6 }}>
+                  <button onClick={() => { setPickupPhoto(null); setPickupPreview(null); }} style={{
+                    background: 'rgba(0,0,0,0.65)', border: 'none', color: '#fff', borderRadius: 8,
+                    padding: '5px 10px', fontSize: 12, cursor: 'pointer', fontWeight: 600,
+                  }}>Retake</button>
+                </div>
+                <div style={{ background: 'rgba(6,182,212,0.15)', padding: '8px 14px', display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <span style={{ color: '#06b6d4', fontSize: 14 }}>✓</span>
+                  <span style={{ color: '#06b6d4', fontSize: 12, fontWeight: 600 }}>Photo ready</span>
+                </div>
+              </div>
+            )}
+
+            {pickupErr && (
+              <div style={{ background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: 10, padding: '10px 14px', color: '#fca5a5', fontSize: 13, marginBottom: 16 }}>
+                ⚠️ {pickupErr}
+              </div>
+            )}
+
+            <div style={{ display: 'flex', gap: 10 }}>
+              <button onClick={() => setPickupModal(null)} style={{
+                flex: 1, padding: '14px', borderRadius: 12, border: '1px solid rgba(255,255,255,0.1)',
+                background: 'rgba(255,255,255,0.05)', color: 'rgba(255,255,255,0.5)',
+                fontSize: 14, fontWeight: 600, cursor: 'pointer',
+              }}>Cancel</button>
+              <button
+                onClick={submitPickup}
+                disabled={advancing === pickupModal.id}
+                style={{
+                  flex: 2, padding: '14px', borderRadius: 12, border: 'none',
+                  background: pickupPhoto ? 'linear-gradient(135deg,#06b6d4,#0891b2)' : 'rgba(255,255,255,0.08)',
+                  color: pickupPhoto ? '#fff' : 'rgba(255,255,255,0.3)',
+                  fontSize: 14, fontWeight: 800, cursor: pickupPhoto ? 'pointer' : 'not-allowed',
+                  boxShadow: pickupPhoto ? '0 4px 20px rgba(6,182,212,0.35)' : 'none',
+                  transition: 'all 0.2s',
+                }}>
+                {advancing === pickupModal.id ? 'Confirming…' : '📦 Confirm Pickup'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }
