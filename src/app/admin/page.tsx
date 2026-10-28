@@ -9,6 +9,7 @@ type Request = {
   id: number;
   donor_name: string;
   donor_phone: string;
+  donor_address: string;
   pickup_address: string;
   food_type: string;
   approx_kg: number | null;
@@ -610,15 +611,16 @@ export default function AdminPage() {
                 {/* Info grid */}
                 <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'16px 24px', marginBottom:20 }}>
                   {[
-                    { label:'Donor / Organisation', value: req.donor_name },
-                    { label:'Phone', value: req.donor_phone, link:`tel:${req.donor_phone}` },
-                    { label:'Food Type', value: req.food_type },
-                    { label:'Serves', value: req.approx_kg ? `~${req.approx_kg} people` : '—' },
-                    { label:'Pickup Address', value: req.pickup_address },
-                    { label:'Ready By', value: req.ready_by ? new Date(req.ready_by).toLocaleString('en-IN',{day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}) : '—' },
-                    { label:'Submitted On', value: req.created_at ? new Date(req.created_at).toLocaleString('en-IN',{day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}) : '—' },
+                    { label:'Donor / Organisation', value: req.donor_name, span: false },
+                    { label:'Phone', value: req.donor_phone || '—', link: req.donor_phone ? `tel:${req.donor_phone}` : undefined, span: false },
+                    { label:'Food Type', value: req.food_type, span: false },
+                    { label:'Serves', value: req.approx_kg ? `~${req.approx_kg} people` : '—', span: false },
+                    { label:'Donor Address', value: req.donor_address || '—', span: true },
+                    { label:'Pickup Address', value: req.pickup_address, span: true },
+                    { label:'Ready By', value: req.ready_by ? new Date(req.ready_by).toLocaleString('en-IN',{day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}) : '—', span: false },
+                    { label:'Submitted On', value: req.created_at ? new Date(req.created_at).toLocaleString('en-IN',{day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}) : '—', span: false },
                   ].map(item => (
-                    <div key={item.label} style={{ gridColumn: item.label === 'Pickup Address' ? 'span 2' : undefined }}>
+                    <div key={item.label} style={{ gridColumn: item.span ? 'span 2' : undefined }}>
                       <div style={{ fontSize:10, fontWeight:700, letterSpacing:'1px', color:'#94a3b8', textTransform:'uppercase', marginBottom:3 }}>{item.label}</div>
                       {item.link
                         ? <a href={item.link} style={{ fontSize:14, color:'#1B5E38', fontWeight:600, textDecoration:'none' }}>{item.value}</a>
@@ -628,8 +630,34 @@ export default function AdminPage() {
                   ))}
                 </div>
 
+                {/* WhatsApp share */}
+                {(() => {
+                  const trackUrl = `https://rajyash.vercel.app/track?id=RJ-${String(req.id).padStart(5,'0')}`;
+                  const msg = `Your Rajyash food pickup request (RJ-${String(req.id).padStart(5,'0')}) is being processed. Track live status here: ${trackUrl}`;
+                  const waUrl = `https://wa.me/${(req.donor_phone||'').replace(/\D/g,'')}?text=${encodeURIComponent(msg)}`;
+                  return (
+                    <div style={{ background:'#f0fdf4', border:'1px solid #bbf7d0', borderRadius:12, padding:'12px 16px', marginBottom:20, display:'flex', alignItems:'center', gap:12 }}>
+                      <span style={{ fontSize:20 }}>📲</span>
+                      <div style={{ flex:1 }}>
+                        <div style={{ fontSize:12, fontWeight:700, color:'#166534', marginBottom:2 }}>Share Tracking Link</div>
+                        <div style={{ fontSize:11, color:'#6B8A7A', wordBreak:'break-all' }}>{trackUrl}</div>
+                      </div>
+                      <div style={{ display:'flex', gap:8, flexShrink:0 }}>
+                        <a href={waUrl} target="_blank" rel="noopener noreferrer" style={{
+                          padding:'7px 14px', borderRadius:8, background:'#25D366', color:'#fff',
+                          fontSize:12, fontWeight:700, textDecoration:'none', display:'flex', alignItems:'center', gap:5,
+                        }}>WhatsApp</a>
+                        <button onClick={()=>navigator.clipboard.writeText(trackUrl)} style={{
+                          padding:'7px 12px', borderRadius:8, border:'1.5px solid #bbf7d0',
+                          background:'#fff', color:'#166534', fontSize:12, cursor:'pointer', fontWeight:600,
+                        }}>Copy</button>
+                      </div>
+                    </div>
+                  );
+                })()}
+
                 {/* Divider */}
-                <div style={{ borderTop:'1.5px solid #f0ebe5', margin:'20px 0' }}/>
+                <div style={{ borderTop:'1.5px solid #f0ebe5', margin:'4px 0 16px' }}/>
 
                 {/* Action buttons */}
                 <div style={{ display:'flex', gap:10, flexWrap:'wrap' }}>

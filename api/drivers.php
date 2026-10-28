@@ -28,14 +28,13 @@ if ($method === 'GET') {
         jsonOut($row);
     }
 
-    // List active drivers
+    // List active drivers — from users table (role = 'driver')
     $stmt = $pdo->prepare("
-        SELECT d.id, d.user_id, d.vehicle_type, d.vehicle_number,
-               u.name, u.phone
-        FROM drivers d
-        JOIN users u ON u.id = d.user_id
-        WHERE d.is_active = 1
-        ORDER BY u.name
+        SELECT id, name, phone,
+               '' AS vehicle_type, '' AS vehicle_number
+        FROM users
+        WHERE role = 'driver' AND is_active = 1
+        ORDER BY name
     ");
     $stmt->execute();
     jsonOut($stmt->fetchAll());

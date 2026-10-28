@@ -17,7 +17,7 @@ if ($method === 'GET') {
     if ($id) {
         $stmt = $pdo->prepare("
             SELECT r.*, d.name AS donor_name, d.phone AS donor_phone,
-                   u.name AS requester_name
+                   d.address AS donor_address, u.name AS requester_name
             FROM requests r
             JOIN donors  d ON d.id = r.donor_id
             JOIN users   u ON u.id = r.requested_by
@@ -33,7 +33,8 @@ if ($method === 'GET') {
     $me = requireAuth();
     if ($me['role'] === 'admin') {
         $status = $_GET['status'] ?? '';
-        $sql = "SELECT r.*, d.name AS donor_name, u.name AS requester_name
+        $sql = "SELECT r.*, d.name AS donor_name, d.phone AS donor_phone,
+                       d.address AS donor_address, u.name AS requester_name
                 FROM requests r
                 JOIN donors d ON d.id = r.donor_id
                 JOIN users  u ON u.id = r.requested_by";
