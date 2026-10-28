@@ -114,7 +114,7 @@ export default function DriverPage() {
         const fd = new FormData();
         fd.append('status', action.next);
         fd.append('pickup_photo', photoFile);
-        res = await fetch(`${API}/trips.php?id=${trip.id}`, {
+        res = await fetch(`${API}/trips.php?id=${trip.id}&status=${action.next}`, {
           method: 'PUT',
           headers: { Authorization: `Bearer ${token}` },
           body: fd,

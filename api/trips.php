@@ -83,7 +83,8 @@ if ($method === 'PUT') {
     // Support both JSON and multipart (for photo upload)
     $isMultipart = strpos($_SERVER['CONTENT_TYPE'] ?? '', 'multipart') !== false;
     $body   = $isMultipart ? $_POST : (json_decode(file_get_contents('php://input'), true) ?? []);
-    $status = $body['status'] ?? '';
+    // PHP doesn't populate $_POST/$_FILES for PUT multipart — fall back to query string
+    $status = $body['status'] ?? $_GET['status'] ?? '';
 
     // Handle pickup photo upload
     $pickupPhotoPath = null;
