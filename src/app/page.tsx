@@ -85,49 +85,44 @@ export default function Home() {
       </nav>
 
       {/* ══ HERO ══════════════════════════════════════════════════ */}
-      <section className="grain" style={{
-        minHeight: '100vh',
-        background: 'linear-gradient(160deg, #0F3D1F 0%, #1B5E38 45%, #0F3D1F 100%)',
+      <section style={{
+        minHeight: '100vh', position: 'relative', overflow: 'hidden',
         display: 'flex', flexDirection: 'column',
         alignItems: 'center', justifyContent: 'center',
         textAlign: 'center', padding: '140px 24px 100px',
-        position: 'relative', overflow: 'hidden',
       }}>
-        {/* Pattern overlay */}
-        <div style={{
-          position: 'absolute', inset: 0,
-          backgroundImage: 'radial-gradient(circle at 20% 80%, rgba(196,150,60,0.08) 0%, transparent 50%), radial-gradient(circle at 80% 20%, rgba(196,150,60,0.06) 0%, transparent 50%)',
-          pointerEvents: 'none', zIndex: 1,
+        {/* Background photo */}
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/hero-bg.jpg" alt="" aria-hidden style={{
+          position: 'absolute', inset: 0, width: '100%', height: '100%',
+          objectFit: 'cover', objectPosition: 'center 30%',
+          pointerEvents: 'none', zIndex: 0,
         }}/>
 
-        {/* Floating food emojis */}
-        {[
-          { e:'🍱', t:'12%', l:'6%',  s:30, d:'0s',   du:'7s' },
-          { e:'🌾', t:'22%', r:'8%',  s:26, d:'1.4s', du:'9s' },
-          { e:'🥘', t:'58%', l:'4%',  s:24, d:'0.6s', du:'8s' },
-          { e:'🍛', t:'68%', r:'6%',  s:28, d:'2.1s', du:'6s' },
-          { e:'🥗', t:'38%', l:'2%',  s:22, d:'1.9s', du:'10s'},
-          { e:'🍞', t:'80%', r:'11%', s:20, d:'0.9s', du:'7.5s'},
-        ].map((f,i) => (
-          <div key={i} style={{
-            position:'absolute', fontSize: f.s, opacity: 0.12,
-            top: f.t, left: f.l ?? undefined, right: (f as {r?:string}).r ?? undefined,
-            animation: `${i%2===0?'float':'float2'} ${f.du} ease-in-out infinite`,
-            animationDelay: f.d, pointerEvents:'none', zIndex:1, userSelect:'none',
-          }}>{f.e}</div>
-        ))}
+        {/* Deep green overlay — visible but lets photo show through */}
+        <div style={{
+          position: 'absolute', inset: 0, zIndex: 1,
+          background: 'linear-gradient(160deg, rgba(10,40,18,0.82) 0%, rgba(15,61,31,0.72) 40%, rgba(10,40,18,0.88) 100%)',
+        }}/>
 
-        <div style={{ position: 'relative', zIndex: 2, maxWidth: 820 }}>
+        {/* Gold vignette glow */}
+        <div style={{
+          position: 'absolute', inset: 0, zIndex: 2, pointerEvents: 'none',
+          backgroundImage: 'radial-gradient(ellipse at 50% 60%, rgba(196,150,60,0.10) 0%, transparent 65%)',
+        }}/>
+
+        <div style={{ position: 'relative', zIndex: 3, maxWidth: 820 }}>
           {/* Logo */}
-          <div className="animate-fade-up" style={{ marginBottom: 36 }}>
+          <div className="animate-fade-up" style={{ marginBottom: 32 }}>
             <Image src="/rajyash-logo.png" alt="Rajyash Foundation" width={220} height={70} style={{ objectFit: 'contain', filter: 'brightness(0) invert(1)' }} priority />
           </div>
 
           {/* Tag */}
           <div className="animate-fade-up delay-100" style={{
             display: 'inline-flex', alignItems: 'center', gap: 8,
-            border: '1px solid rgba(196,150,60,0.4)',
-            background: 'rgba(196,150,60,0.08)',
+            border: '1px solid rgba(196,150,60,0.5)',
+            background: 'rgba(196,150,60,0.12)',
+            backdropFilter: 'blur(8px)',
             borderRadius: 2, padding: '6px 18px', marginBottom: 28,
           }}>
             <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#C4963C', boxShadow: '0 0 8px #C4963C' }}/>
@@ -139,6 +134,7 @@ export default function Home() {
           <h1 className="animate-fade-up delay-200" style={{
             fontSize: 'clamp(40px,6.5vw,84px)', fontWeight: 900,
             color: '#fff', lineHeight: 1.06, letterSpacing: '-2px', marginBottom: 8,
+            textShadow: '0 2px 24px rgba(0,0,0,0.4)',
           }}>
             Every meal saved
           </h1>
@@ -150,8 +146,9 @@ export default function Home() {
           </h1>
 
           <p className="animate-fade-up delay-400" style={{
-            fontSize: 'clamp(15px,1.8vw,19px)', color: 'rgba(255,255,255,0.65)',
-            maxWidth: 520, lineHeight: 1.75, marginBottom: 48, margin: '0 auto 48px',
+            fontSize: 'clamp(15px,1.8vw,19px)', color: 'rgba(255,255,255,0.72)',
+            maxWidth: 520, lineHeight: 1.75, margin: '0 auto 48px',
+            textShadow: '0 1px 8px rgba(0,0,0,0.3)',
           }}>
             Rajyash Foundation connects hotels, restaurants &amp; event venues with surplus food to families who need it — same day, across Ahmedabad.
           </p>
@@ -168,7 +165,7 @@ export default function Home() {
           {/* Stats strip */}
           <div className="animate-fade-up delay-600" style={{
             display: 'flex', gap: 0, justifyContent: 'center', marginTop: 72,
-            borderTop: '1px solid rgba(196,150,60,0.2)', paddingTop: 36, flexWrap: 'wrap',
+            borderTop: '1px solid rgba(196,150,60,0.25)', paddingTop: 36, flexWrap: 'wrap',
           }}>
             {[['365,000+','People Helped'],['1,240+','Trips Completed'],['18','Drop Points'],['380+','Donors']].map(([n,l],i,arr) => (
               <div key={l} style={{
@@ -176,16 +173,16 @@ export default function Home() {
                 borderRight: i < arr.length-1 ? '1px solid rgba(196,150,60,0.2)' : 'none',
               }}>
                 <div style={{ fontSize: 26, fontWeight: 900, color: '#D4A84B', letterSpacing: '-0.5px' }}>{n}</div>
-                <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.45)', marginTop: 4, letterSpacing: '0.05em' }}>{l}</div>
+                <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)', marginTop: 4, letterSpacing: '0.05em' }}>{l}</div>
               </div>
             ))}
           </div>
         </div>
 
         {/* Scroll arrow */}
-        <div className="animate-bounce-arrow" style={{ position: 'absolute', bottom: 32, left: '50%', zIndex: 2 }}>
+        <div className="animate-bounce-arrow" style={{ position: 'absolute', bottom: 32, left: '50%', zIndex: 3 }}>
           <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
-            <path d="M7 10l5 5 5-5" stroke="rgba(196,150,60,0.5)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+            <path d="M7 10l5 5 5-5" stroke="rgba(196,150,60,0.6)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
           </svg>
         </div>
       </section>
@@ -231,6 +228,89 @@ export default function Home() {
             ))}
           </div>
         </div>
+      </section>
+
+      {/* ══ STORY SECTION (children photo) ════════════════════════ */}
+      <section style={{ background: '#0F3D1F', padding: '0', overflow: 'hidden', position: 'relative' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', minHeight: 520 }}>
+          {/* Photo side */}
+          <div style={{ position: 'relative', minHeight: 400 }}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/impact-children.jpg" alt="Children at school smiling" style={{
+              width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center top', display: 'block',
+            }}/>
+            {/* Gradient blend into green on right edge */}
+            <div style={{
+              position: 'absolute', inset: 0,
+              background: 'linear-gradient(90deg, transparent 60%, #0F3D1F 100%)',
+              pointerEvents: 'none',
+            }}/>
+            {/* Bottom fade */}
+            <div style={{
+              position: 'absolute', bottom: 0, left: 0, right: 0, height: 80,
+              background: 'linear-gradient(to top, #0F3D1F, transparent)',
+              pointerEvents: 'none',
+            }}/>
+            {/* Caption badge */}
+            <div style={{
+              position: 'absolute', bottom: 24, left: 24,
+              background: 'rgba(10,40,18,0.75)', backdropFilter: 'blur(12px)',
+              border: '1px solid rgba(196,150,60,0.3)', borderRadius: 10,
+              padding: '8px 14px', display: 'flex', alignItems: 'center', gap: 8,
+            }}>
+              <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#22c55e', boxShadow: '0 0 6px #22c55e', flexShrink: 0 }}/>
+              <span style={{ color: 'rgba(255,255,255,0.85)', fontSize: 12, fontWeight: 600 }}>Real children. Real impact.</span>
+            </div>
+          </div>
+
+          {/* Text side */}
+          <div style={{
+            display: 'flex', flexDirection: 'column', justifyContent: 'center',
+            padding: 'clamp(40px,6vw,80px) clamp(32px,5vw,72px)',
+          }}>
+            <div className="reveal" style={{
+              display: 'inline-flex', alignItems: 'center', gap: 8,
+              background: 'rgba(196,150,60,0.12)', border: '1px solid rgba(196,150,60,0.3)',
+              borderRadius: 2, padding: '5px 14px', marginBottom: 24, alignSelf: 'flex-start',
+            }}>
+              <span style={{ color: '#D4A84B', fontSize: 10, fontWeight: 700, letterSpacing: '2px' }}>OUR STORY</span>
+            </div>
+
+            <h2 className="reveal" style={{
+              fontSize: 'clamp(28px,3.5vw,46px)', fontWeight: 900, color: '#fff',
+              lineHeight: 1.1, letterSpacing: '-1px', marginBottom: 20,
+            }}>
+              From surplus plates<br/>
+              <span style={{ color: '#D4A84B' }}>to smiling faces.</span>
+            </h2>
+
+            <p className="reveal" style={{ color: 'rgba(255,255,255,0.6)', fontSize: 15, lineHeight: 1.85, marginBottom: 28 }}>
+              Since 2021, Rajyash Foundation has been turning excess food into nourishment for children, daily-wage families, and communities in need across Ahmedabad — same-day, every day.
+            </p>
+
+            <div className="reveal" style={{ display: 'flex', gap: 20, flexWrap: 'wrap', marginBottom: 36 }}>
+              {[['🏫','Schools & shelters fed'],['👨‍👩‍👧','Families reached daily'],['♻️','Zero waste mission']].map(([icon,text]) => (
+                <div key={text} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <div style={{ width: 36, height: 36, borderRadius: 10, background: 'rgba(196,150,60,0.12)', border: '1px solid rgba(196,150,60,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, flexShrink: 0 }}>{icon}</div>
+                  <span style={{ color: 'rgba(255,255,255,0.65)', fontSize: 13, fontWeight: 500 }}>{text}</span>
+                </div>
+              ))}
+            </div>
+
+            <div className="reveal">
+              <Link href="/give" className="btn-gold" style={{ fontSize: 13, padding: '13px 32px', display: 'inline-block' }}>
+                Be Part of the Story →
+              </Link>
+            </div>
+          </div>
+        </div>
+
+        {/* Mobile: stack photo on top */}
+        <style>{`
+          @media (max-width: 700px) {
+            .story-grid { grid-template-columns: 1fr !important; }
+          }
+        `}</style>
       </section>
 
       {/* ══ HOW IT WORKS ══════════════════════════════════════════ */}
