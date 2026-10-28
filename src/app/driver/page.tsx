@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import Image from 'next/image';
 
 const API = 'https://slipms.com/rajyash-api';
 
@@ -112,70 +113,165 @@ export default function DriverPage() {
   // ── LOGIN ─────────────────────────────────────────────────────────
   if (!token) {
     return (
-      <div style={{
-        minHeight: '100vh',
-        background: 'linear-gradient(135deg, #0a2e1e 0%, #1a4731 50%, #0d3d24 100%)',
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        padding: '24px', fontFamily: 'Inter, system-ui, sans-serif',
-      }}>
+      <div style={{ minHeight: '100vh', display: 'flex', fontFamily: 'Inter, system-ui, sans-serif' }}>
+
+        {/* ── LEFT BRAND PANEL ── */}
         <div style={{
-          background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)',
-          borderRadius: '20px', padding: '48px 40px', width: '100%', maxWidth: '420px',
-          backdropFilter: 'blur(20px)',
+          flex: '0 0 45%', background: 'linear-gradient(160deg, #0F3D1F 0%, #1B5E38 60%, #0F3D1F 100%)',
+          display: 'flex', flexDirection: 'column', padding: '52px 48px',
+          position: 'relative', overflow: 'hidden',
         }}>
-          <div style={{ textAlign: 'center', marginBottom: '36px' }}>
-            <div style={{
-              width: '56px', height: '56px', borderRadius: '16px',
-              background: 'linear-gradient(135deg, #f97316, #fb923c)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              margin: '0 auto 16px', fontSize: '26px',
-            }}>🚗</div>
-            <h1 style={{ color: '#fff', fontSize: '22px', fontWeight: 700, margin: 0 }}>Driver Portal</h1>
-            <p style={{ color: 'rgba(255,255,255,0.45)', fontSize: '14px', marginTop: '6px' }}>Rajyash Foundation</p>
+          {/* Dot pattern overlay */}
+          <div style={{
+            position: 'absolute', inset: 0, opacity: 0.06, pointerEvents: 'none',
+            backgroundImage: 'radial-gradient(circle, #fff 1px, transparent 1px)',
+            backgroundSize: '24px 24px',
+          }}/>
+          {/* Decorative circle */}
+          <div style={{
+            position: 'absolute', bottom: -80, right: -80,
+            width: 320, height: 320, borderRadius: '50%',
+            background: 'rgba(196,150,60,0.08)', pointerEvents: 'none',
+          }}/>
+
+          {/* Logo */}
+          <div style={{ position: 'relative', zIndex: 1 }}>
+            <Image
+              src="/rajyash-logo.png" alt="Rajyash Foundation" width={160} height={60}
+              style={{ objectFit: 'contain', objectPosition: 'left', filter: 'brightness(0) invert(1)' }}
+            />
           </div>
 
-          <form onSubmit={handleLogin}>
-            <div style={{ marginBottom: '16px' }}>
-              <label style={{ color: 'rgba(255,255,255,0.6)', fontSize: '12px', fontWeight: 500, letterSpacing: '0.05em', textTransform: 'uppercase', display: 'block', marginBottom: '8px' }}>Phone Number</label>
-              <input
-                type="tel" value={phone} onChange={e => setPhone(e.target.value)}
-                placeholder="10-digit mobile number"
-                style={{
-                  width: '100%', padding: '12px 16px', borderRadius: '10px', boxSizing: 'border-box',
-                  background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.12)',
-                  color: '#fff', fontSize: '15px', outline: 'none',
-                }}
-              />
+          {/* Center content */}
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', position: 'relative', zIndex: 1 }}>
+            <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '2px', color: 'rgba(196,150,60,0.9)', textTransform: 'uppercase', marginBottom: 16 }}>
+              DRIVER PORTAL
             </div>
-            <div style={{ marginBottom: '24px' }}>
-              <label style={{ color: 'rgba(255,255,255,0.6)', fontSize: '12px', fontWeight: 500, letterSpacing: '0.05em', textTransform: 'uppercase', display: 'block', marginBottom: '8px' }}>Password</label>
-              <input
-                type="password" value={password} onChange={e => setPassword(e.target.value)}
-                placeholder="••••••••"
-                style={{
-                  width: '100%', padding: '12px 16px', borderRadius: '10px', boxSizing: 'border-box',
-                  background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.12)',
-                  color: '#fff', fontSize: '15px', outline: 'none',
-                }}
-              />
-            </div>
+            <h2 style={{ fontSize: 'clamp(26px,3vw,36px)', fontWeight: 900, color: '#fff', lineHeight: 1.15, letterSpacing: '-1px', marginBottom: 16 }}>
+              Your trips,<br />ready to roll.
+            </h2>
+            <p style={{ color: 'rgba(168,197,181,0.75)', fontSize: 15, lineHeight: 1.7, maxWidth: 280, marginBottom: 40 }}>
+              See your assigned pickups, update trip status in one tap, and help meals reach the right hands.
+            </p>
 
-            {loginErr && (
-              <div style={{
-                background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.3)',
-                borderRadius: '8px', padding: '10px 14px', color: '#fca5a5',
-                fontSize: '14px', marginBottom: '16px',
-              }}>{loginErr}</div>
-            )}
+            {/* Feature list */}
+            {[
+              { icon: '📋', label: 'View Assigned Trips' },
+              { icon: '🚗', label: 'Start & Track Rides' },
+              { icon: '📦', label: 'Confirm Deliveries' },
+            ].map(f => (
+              <div key={f.label} style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 14 }}>
+                <div style={{
+                  width: 34, height: 34, borderRadius: 10,
+                  background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.12)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15, flexShrink: 0,
+                }}>{f.icon}</div>
+                <span style={{ color: 'rgba(255,255,255,0.75)', fontSize: 13, fontWeight: 500 }}>{f.label}</span>
+              </div>
+            ))}
+          </div>
 
-            <button type="submit" disabled={logging} style={{
-              width: '100%', padding: '14px', borderRadius: '10px', border: 'none',
-              background: 'linear-gradient(135deg, #f97316, #fb923c)',
-              color: '#fff', fontWeight: 700, fontSize: '15px', cursor: 'pointer',
-              opacity: logging ? 0.7 : 1,
-            }}>{logging ? 'Signing in…' : 'Sign In'}</button>
-          </form>
+          {/* Bottom tagline */}
+          <div style={{ position: 'relative', zIndex: 1 }}>
+            <div style={{ width: 40, height: 2, background: 'linear-gradient(90deg,#C4963C,#D4A84B)', borderRadius: 2, marginBottom: 12 }}/>
+            <p style={{ color: 'rgba(168,197,181,0.45)', fontSize: 11, fontWeight: 600, letterSpacing: '1.5px', textTransform: 'uppercase' }}>
+              WE RISE BY LIFTING OTHERS
+            </p>
+          </div>
         </div>
+
+        {/* ── RIGHT FORM PANEL ── */}
+        <div style={{
+          flex: 1, background: '#FDFBF7', display: 'flex', alignItems: 'center', justifyContent: 'center',
+          padding: '48px 40px', position: 'relative',
+        }}>
+          {/* Accent bar */}
+          <div style={{
+            position: 'absolute', left: 0, top: '15%', bottom: '15%', width: 4,
+            background: 'linear-gradient(to bottom, #C4963C, #f97316)',
+            borderRadius: '0 4px 4px 0',
+          }}/>
+
+          <div style={{ width: '100%', maxWidth: 380 }}>
+            <div style={{ marginBottom: 36 }}>
+              <h1 style={{ fontSize: 30, fontWeight: 900, color: '#0F3D1F', letterSpacing: '-0.8px', marginBottom: 6 }}>
+                Welcome back
+              </h1>
+              <p style={{ color: '#6B8A7A', fontSize: 14 }}>Sign in to your driver dashboard</p>
+            </div>
+
+            <form onSubmit={handleLogin}>
+              <div style={{ marginBottom: 18 }}>
+                <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#1B5E38', letterSpacing: '0.5px', marginBottom: 7, textTransform: 'uppercase' }}>
+                  Phone Number
+                </label>
+                <input
+                  type="tel" required value={phone} onChange={e => setPhone(e.target.value)}
+                  placeholder="10-digit mobile number"
+                  style={{
+                    width: '100%', padding: '13px 16px', boxSizing: 'border-box',
+                    border: '1.5px solid #DDE8D8', borderRadius: 12,
+                    fontSize: 15, fontFamily: 'inherit', color: '#0F3D1F',
+                    background: '#fff', outline: 'none',
+                    transition: 'border-color 0.2s, box-shadow 0.2s',
+                  }}
+                  onFocus={e => { e.target.style.borderColor = '#1B5E38'; e.target.style.boxShadow = '0 0 0 3px rgba(27,94,56,0.1)'; }}
+                  onBlur={e => { e.target.style.borderColor = '#DDE8D8'; e.target.style.boxShadow = 'none'; }}
+                />
+              </div>
+
+              <div style={{ marginBottom: 28 }}>
+                <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#1B5E38', letterSpacing: '0.5px', marginBottom: 7, textTransform: 'uppercase' }}>
+                  Password
+                </label>
+                <input
+                  type="password" required value={password} onChange={e => setPassword(e.target.value)}
+                  placeholder="••••••••"
+                  style={{
+                    width: '100%', padding: '13px 16px', boxSizing: 'border-box',
+                    border: '1.5px solid #DDE8D8', borderRadius: 12,
+                    fontSize: 15, fontFamily: 'inherit', color: '#0F3D1F',
+                    background: '#fff', outline: 'none',
+                    transition: 'border-color 0.2s, box-shadow 0.2s',
+                  }}
+                  onFocus={e => { e.target.style.borderColor = '#1B5E38'; e.target.style.boxShadow = '0 0 0 3px rgba(27,94,56,0.1)'; }}
+                  onBlur={e => { e.target.style.borderColor = '#DDE8D8'; e.target.style.boxShadow = 'none'; }}
+                />
+              </div>
+
+              {loginErr && (
+                <div style={{
+                  background: '#fef2f2', border: '1px solid #fca5a5',
+                  borderRadius: 10, padding: '10px 14px', color: '#dc2626',
+                  fontSize: 13, fontWeight: 600, marginBottom: 20,
+                }}>
+                  ⚠️ {loginErr}
+                </div>
+              )}
+
+              <button type="submit" disabled={logging} style={{
+                width: '100%', padding: '15px', border: 'none', borderRadius: 12,
+                background: logging ? '#9ca3af' : 'linear-gradient(135deg, #f97316, #fb923c)',
+                color: '#fff', fontSize: 15, fontWeight: 800, letterSpacing: '0.3px',
+                cursor: logging ? 'not-allowed' : 'pointer',
+                boxShadow: logging ? 'none' : '0 4px 20px rgba(249,115,22,0.35)',
+                transition: 'all 0.2s',
+              }}>
+                {logging ? 'Signing in…' : 'Sign In to Driver Portal →'}
+              </button>
+            </form>
+
+            <p style={{ textAlign: 'center', fontSize: 12, color: '#A8B5AD', marginTop: 24 }}>
+              Driver access only · Contact admin for credentials
+            </p>
+          </div>
+        </div>
+
+        <style>{`
+          @media (max-width: 640px) {
+            .driver-login-left { display: none !important; }
+          }
+        `}</style>
       </div>
     );
   }
@@ -195,13 +291,15 @@ export default function DriverPage() {
         padding: '0 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
         height: '64px', position: 'sticky', top: 0, zIndex: 100, backdropFilter: 'blur(20px)',
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <span style={{ fontSize: '20px' }}>🚗</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+          <Image src="/rajyash-logo.png" alt="Rajyash Foundation" width={110} height={38}
+            style={{ objectFit: 'contain', filter: 'brightness(0) invert(1)', opacity: 0.92 }} />
+          <div style={{ width: 1, height: 28, background: 'rgba(255,255,255,0.12)' }} />
           <div>
             <span style={{ fontWeight: 700, color: '#fff', fontSize: '15px' }}>
               {driverName || 'Driver'}
             </span>
-            <span style={{ color: 'rgba(255,255,255,0.35)', fontSize: '12px', display: 'block', lineHeight: 1.2 }}>Rajyash Driver</span>
+            <span style={{ color: 'rgba(255,255,255,0.35)', fontSize: '12px', display: 'block', lineHeight: 1.2 }}>Driver Portal</span>
           </div>
         </div>
         <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
