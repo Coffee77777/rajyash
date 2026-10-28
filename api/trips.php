@@ -75,55 +75,30 @@ if ($method === 'GET') {
     jsonOut($stmt->fetchAll());
 }
 
-// ── PUT — advance trip status (driver or admin) ───────────────────
-if ($method === 'PUT') {
-    $id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
-    if (!$id) jsonOut(['error' => 'id required'], 400);
-
-    // Support both JSON and multipart (for photo upload)
-    $isMultipart = strpos($_SERVER['CONTENT_TYPE'] ?? '', 'multipart') !== false;
-    $body   = $isMultipart ? $_POST : (json_decode(file_get_contents('php://input'), true) ?? []);
-    // PHP doesn't populate $_POST/$_FILES for PUT multipart — fall back to query string
-    $status = $body['status'] ?? $_GET['status'] ?? '';
-
-    // Handle pickup photo upload
-    $pickupPhotoPath = null;
-    if (!empty($_FILES['pickup_photo']['tmp_name']) && $_FILES['pickup_photo']['error'] === UPLOAD_ERR_OK) {
-        $ext = strtolower(pathinfo($_FILES['pickup_photo']['name'], PATHINFO_EXTENSION));
-        if (in_array($ext, ['jpg','jpeg','png','webp'])) {
-            $uploadDir = __DIR__ . '/uploads/';
-            if (!is_dir($uploadDir)) mkdir($uploadDir, 0755, true);
-            $filename = 'pickup_' . uniqid('', true) . '.' . $ext;
-            if (move_uploaded_file($_FILES['pickup_photo']['tmp_name'], $uploadDir . $filename)) {
-                $pickupPhotoPath = 'uploads/' . $filename;
-            }
-        }
-    }
-
+// ── Shared status-advance logic (used by both PUT and POST) ───────
+function advanceTripStatus(PDO $pdo, array $me, int $id, string $status, ?string $pickupPhotoPath): void {
     $driverAllowed = ['ride_started', 'picked_up', 'delivered'];
-    $adminAllowed  = ['assigned', 'ride_started', 'picked_up', 'delivered', 'cancelled'];
+    $adminAllowed  = ['assigned', 'accepted', 'ride_started', 'picked_up', 'delivered', 'cancelled'];
 
     $allowed = $me['role'] === 'admin' ? $adminAllowed : $driverAllowed;
     if (!in_array($status, $allowed, true)) jsonOut(['error' => 'Invalid status'], 400);
 
-    // Fetch trip
     $tq = $pdo->prepare("SELECT * FROM trips WHERE id = ? LIMIT 1");
     $tq->execute([$id]);
     $trip = $tq->fetch();
     if (!$trip) jsonOut(['error' => 'Trip not found'], 404);
 
-    // Check ownership for drivers
     if ($me['role'] !== 'admin' && (int)$trip['driver_id'] !== (int)$me['sub']) {
         jsonOut(['error' => 'Access denied'], 403);
     }
 
     if ($pickupPhotoPath) {
-        $pdo->prepare("UPDATE trips SET status = ?, pickup_photo = ? WHERE id = ?")->execute([$status, $pickupPhotoPath, $id]);
+        $pdo->prepare("UPDATE trips SET status = ?, pickup_photo = ? WHERE id = ?")
+            ->execute([$status, $pickupPhotoPath, $id]);
     } else {
         $pdo->prepare("UPDATE trips SET status = ? WHERE id = ?")->execute([$status, $id]);
     }
 
-    // Mirror status to request
     $reqStatus = match($status) {
         'ride_started' => 'ride_started',
         'picked_up'    => 'picked_up',
@@ -139,6 +114,39 @@ if ($method === 'PUT') {
         ['from' => $trip['status'], 'to' => $status]);
 
     jsonOut(['success' => true]);
+}
+
+// ── POST — pickup photo upload (PHP only populates $_FILES on POST) ─
+if ($method === 'POST') {
+    $id     = isset($_GET['id']) ? (int)$_GET['id'] : 0;
+    $status = $_POST['status'] ?? $_GET['status'] ?? '';
+    if (!$id || !$status) jsonOut(['error' => 'id and status required'], 400);
+
+    $pickupPhotoPath = null;
+    if (!empty($_FILES['pickup_photo']['tmp_name']) && $_FILES['pickup_photo']['error'] === UPLOAD_ERR_OK) {
+        $ext = strtolower(pathinfo($_FILES['pickup_photo']['name'], PATHINFO_EXTENSION));
+        if (in_array($ext, ['jpg','jpeg','png','webp'])) {
+            $uploadDir = __DIR__ . '/uploads/';
+            if (!is_dir($uploadDir)) mkdir($uploadDir, 0755, true);
+            $filename = 'pickup_' . uniqid('', true) . '.' . $ext;
+            if (move_uploaded_file($_FILES['pickup_photo']['tmp_name'], $uploadDir . $filename)) {
+                $pickupPhotoPath = 'uploads/' . $filename;
+            }
+        }
+    }
+
+    advanceTripStatus($pdo, $me, $id, $status, $pickupPhotoPath);
+}
+
+// ── PUT — advance trip status without photo (JSON body) ───────────
+if ($method === 'PUT') {
+    $id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
+    if (!$id) jsonOut(['error' => 'id required'], 400);
+
+    $body   = json_decode(file_get_contents('php://input'), true) ?? [];
+    $status = $body['status'] ?? $_GET['status'] ?? '';
+
+    advanceTripStatus($pdo, $me, $id, $status, null);
 }
 
 jsonOut(['error' => 'Method not allowed'], 405);

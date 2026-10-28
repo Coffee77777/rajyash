@@ -17,8 +17,11 @@ type Request = {
   status: string;
   created_at: string;
   requester_name: string;
-  photo_path?: string;    // comma-separated food photos (from give form)
-  pickup_photo?: string;  // driver pickup photo (from trips table)
+  photo_path?: string;
+  pickup_photo?: string;
+  driver_name?: string;
+  driver_phone?: string;
+  driver_id?: number;
 };
 type Driver = { id: number; name: string; phone: string; vehicle_type: string; vehicle_number: string; };
 
@@ -70,6 +73,8 @@ export default function AdminPage() {
   const [updating, setUpdating]     = useState(false);
   const [lightbox, setLightbox]     = useState<string|null>(null);
   const [detailModal, setDetail]    = useState<Request|null>(null);
+  const [search, setSearch]         = useState('');
+  const [activeTab, setActiveTab]   = useState<'requests'|'drivers'>('requests');
 
   useEffect(() => {
     const t = sessionStorage.getItem('rj_admin_token');
@@ -235,13 +240,40 @@ export default function AdminPage() {
   );
 
   // ── DASHBOARD ────────────────────────────────────────────────────
-  const filters = ['','requested','under_review','assigned','ride_started','delivered','cancelled'];
+  const filters = ['','requested','under_review','assigned','ride_started','picked_up','delivered','cancelled'];
   const stats = [
     { label:'Total Requests', count:requests.length,                                               icon:'📋', color:'#6366f1', light:'#eef2ff' },
     { label:'Pending Review',  count:requests.filter(r=>r.status==='requested').length,             icon:'⏳', color:'#f59e0b', light:'#fefce8' },
-    { label:'Active Trips',    count:requests.filter(r=>['assigned','ride_started','picked_up'].includes(r.status)).length, icon:'🚗', color:'#f97316', light:'#fff7ed' },
+    { label:'Active Trips',    count:requests.filter(r=>['assigned','accepted','ride_started','picked_up'].includes(r.status)).length, icon:'🚗', color:'#f97316', light:'#fff7ed' },
     { label:'Delivered',       count:requests.filter(r=>r.status==='delivered'||r.status==='closed').length, icon:'✅', color:'#22c55e', light:'#f0fdf4' },
   ];
+
+  // Search filter
+  const q = search.toLowerCase();
+  const filtered = requests.filter(r =>
+    !q ||
+    r.donor_name.toLowerCase().includes(q) ||
+    r.food_type.toLowerCase().includes(q) ||
+    r.pickup_address.toLowerCase().includes(q) ||
+    (r.donor_phone||'').includes(q) ||
+    (r.driver_name||'').toLowerCase().includes(q) ||
+    `rj-${String(r.id).padStart(5,'0')}`.includes(q)
+  );
+
+  // Per-driver grouping for Drivers tab
+  type DriverStat = { id: number; name: string; phone: string; total: number; delivered: number; active: number; reqs: Request[] };
+  const driverMap: Record<number, DriverStat> = {};
+  requests.forEach(r => {
+    if (!r.driver_id || !r.driver_name) return;
+    if (!driverMap[r.driver_id]) {
+      driverMap[r.driver_id] = { id: r.driver_id, name: r.driver_name, phone: r.driver_phone||'', total:0, delivered:0, active:0, reqs:[] };
+    }
+    driverMap[r.driver_id].total++;
+    driverMap[r.driver_id].reqs.push(r);
+    if (r.status === 'delivered' || r.status === 'closed') driverMap[r.driver_id].delivered++;
+    else if (['assigned','accepted','ride_started','picked_up'].includes(r.status)) driverMap[r.driver_id].active++;
+  });
+  const driverStats = Object.values(driverMap).sort((a,b) => b.delivered - a.delivered);
 
   return (
     <div style={{ minHeight:'100vh', background:'#f1f5f9', fontFamily:'Inter,system-ui,sans-serif', color:'#0f172a' }}>
@@ -285,12 +317,30 @@ export default function AdminPage() {
 
       <div style={{ maxWidth:1200, margin:'0 auto', padding:'28px 24px' }}>
 
-        {/* ── PAGE TITLE ── */}
-        <div style={{ marginBottom:28 }}>
-          <h1 style={{ fontSize:24, fontWeight:800, color:'#0f172a', letterSpacing:'-0.5px', marginBottom:4 }}>
-            Requests Dashboard
-          </h1>
-          <p style={{ fontSize:14, color:'#64748b' }}>Manage and track all food pickup requests</p>
+        {/* ── PAGE TITLE + TABS ── */}
+        <div style={{ marginBottom:24, display:'flex', alignItems:'center', justifyContent:'space-between', flexWrap:'wrap', gap:12 }}>
+          <div>
+            <h1 style={{ fontSize:24, fontWeight:800, color:'#0f172a', letterSpacing:'-0.5px', marginBottom:4 }}>
+              {activeTab === 'requests' ? 'Requests Dashboard' : 'Driver Deliveries'}
+            </h1>
+            <p style={{ fontSize:14, color:'#64748b' }}>
+              {activeTab === 'requests' ? 'Manage and track all food pickup requests' : 'Per-driver delivery history and stats'}
+            </p>
+          </div>
+          <div style={{ display:'flex', gap:6 }}>
+            {(['requests','drivers'] as const).map(tab => (
+              <button key={tab} onClick={()=>setActiveTab(tab)} style={{
+                padding:'8px 20px', borderRadius:10, border:'1.5px solid',
+                borderColor: activeTab===tab ? '#1B5E38' : '#e2e8f0',
+                background: activeTab===tab ? '#f0fdf4' : '#fff',
+                color: activeTab===tab ? '#166534' : '#64748b',
+                fontSize:13, cursor:'pointer', fontWeight: activeTab===tab ? 700 : 500,
+                transition:'all 0.15s',
+              }}>
+                {tab === 'requests' ? '📋 Requests' : '🚗 Drivers'}
+              </button>
+            ))}
+          </div>
         </div>
 
         {/* ── STATS ── */}
@@ -315,51 +365,135 @@ export default function AdminPage() {
           ))}
         </div>
 
-        {/* ── FILTERS + TOOLBAR ── */}
-        <div style={{ background:'#fff', borderRadius:14, padding:'16px 20px', marginBottom:20, boxShadow:'0 1px 4px rgba(0,0,0,0.05)', border:'1px solid #f1f5f9', display:'flex', alignItems:'center', gap:8, flexWrap:'wrap' }}>
-          <span style={{ fontSize:12, color:'#94a3b8', fontWeight:500, marginRight:4 }}>Filter</span>
-          {filters.map(f => {
-            const active = filterStatus === f;
-            const col = f ? S_COLOR[f] : null;
-            return (
-              <button key={f||'all'} onClick={()=>setFilter(f)} style={{
-                padding:'5px 14px', borderRadius:20, border:'1.5px solid',
-                borderColor: active ? (col?.dot||'#0A2E1E') : '#e2e8f0',
-                background: active ? (col?.bg||'#f0fdf4') : '#fff',
-                color: active ? (col?.text||'#166534') : '#64748b',
-                fontSize:12, cursor:'pointer', fontWeight: active?700:500,
-                transition:'all 0.15s',
-              }}>
-                {f ? S_LABEL[f] : 'All'}
-              </button>
-            );
-          })}
-          <div style={{ marginLeft:'auto', display:'flex', gap:8 }}>
-            <button onClick={()=>fetchAll(token!,filterStatus)} style={{
-              padding:'7px 16px', borderRadius:8, border:'1.5px solid #e2e8f0',
-              background:'#fff', color:'#64748b', cursor:'pointer', fontSize:13, fontWeight:500,
-              display:'flex', alignItems:'center', gap:6,
-            }}>
-              <span style={{ fontSize:14 }}>↻</span> Refresh
-            </button>
+        {/* ── SEARCH + FILTERS ── */}
+        {activeTab === 'requests' && (
+          <>
+            <div style={{ background:'#fff', borderRadius:14, padding:'12px 16px', marginBottom:12, boxShadow:'0 1px 4px rgba(0,0,0,0.05)', border:'1px solid #f1f5f9', display:'flex', alignItems:'center', gap:10 }}>
+              <span style={{ fontSize:16 }}>🔍</span>
+              <input
+                type="text" placeholder="Search by donor, food type, address, driver, RJ-ID…"
+                value={search} onChange={e=>setSearch(e.target.value)}
+                style={{ flex:1, border:'none', outline:'none', fontSize:14, color:'#0f172a', background:'transparent', fontFamily:'inherit' }}
+              />
+              {search && <button onClick={()=>setSearch('')} style={{ background:'none', border:'none', color:'#94a3b8', cursor:'pointer', fontSize:16, padding:'0 4px' }}>✕</button>}
+            </div>
+
+            <div style={{ background:'#fff', borderRadius:14, padding:'14px 16px', marginBottom:20, boxShadow:'0 1px 4px rgba(0,0,0,0.05)', border:'1px solid #f1f5f9', display:'flex', alignItems:'center', gap:8, flexWrap:'wrap' }}>
+              <span style={{ fontSize:12, color:'#94a3b8', fontWeight:500, marginRight:4 }}>Filter</span>
+              {filters.map(f => {
+                const active = filterStatus === f;
+                const col = f ? S_COLOR[f] : null;
+                return (
+                  <button key={f||'all'} onClick={()=>setFilter(f)} style={{
+                    padding:'5px 14px', borderRadius:20, border:'1.5px solid',
+                    borderColor: active ? (col?.dot||'#0A2E1E') : '#e2e8f0',
+                    background: active ? (col?.bg||'#f0fdf4') : '#fff',
+                    color: active ? (col?.text||'#166534') : '#64748b',
+                    fontSize:12, cursor:'pointer', fontWeight: active?700:500,
+                    transition:'all 0.15s',
+                  }}>
+                    {f ? S_LABEL[f] : 'All'}
+                  </button>
+                );
+              })}
+              <div style={{ marginLeft:'auto' }}>
+                <button onClick={()=>fetchAll(token!,filterStatus)} style={{
+                  padding:'7px 16px', borderRadius:8, border:'1.5px solid #e2e8f0',
+                  background:'#fff', color:'#64748b', cursor:'pointer', fontSize:13, fontWeight:500,
+                  display:'flex', alignItems:'center', gap:6,
+                }}>
+                  <span style={{ fontSize:14 }}>↻</span> Refresh
+                </button>
+              </div>
+            </div>
+          </>
+        )}
+
+        {/* ── DRIVERS TAB ── */}
+        {activeTab === 'drivers' && (
+          <div style={{ display:'flex', flexDirection:'column', gap:16 }}>
+            {driverStats.length === 0 ? (
+              <div style={{ textAlign:'center', padding:60, background:'#fff', borderRadius:16, color:'#94a3b8' }}>
+                <div style={{ fontSize:40, marginBottom:12 }}>🚗</div>
+                <div style={{ fontSize:15, fontWeight:600, color:'#64748b' }}>No driver assignments yet</div>
+              </div>
+            ) : driverStats.map(drv => (
+              <div key={drv.id} style={{ background:'#fff', borderRadius:18, border:'1px solid #f1f5f9', boxShadow:'0 1px 4px rgba(0,0,0,0.05)', overflow:'hidden' }}>
+                {/* Driver header */}
+                <div style={{ padding:'18px 20px', display:'flex', alignItems:'center', gap:14, borderBottom:'1px solid #f1f5f9' }}>
+                  <div style={{ width:44, height:44, borderRadius:14, background:'linear-gradient(135deg,#0F3D1F,#1B5E38)', display:'flex', alignItems:'center', justifyContent:'center', color:'#fff', fontWeight:800, fontSize:18, flexShrink:0 }}>
+                    {drv.name.charAt(0).toUpperCase()}
+                  </div>
+                  <div style={{ flex:1 }}>
+                    <div style={{ fontWeight:800, color:'#0f172a', fontSize:16 }}>{drv.name}</div>
+                    <a href={`tel:${drv.phone}`} style={{ fontSize:13, color:'#1B5E38', textDecoration:'none' }}>{drv.phone}</a>
+                  </div>
+                  <div style={{ display:'flex', gap:10 }}>
+                    <div style={{ textAlign:'center', background:'#f0fdf4', borderRadius:10, padding:'8px 14px' }}>
+                      <div style={{ fontSize:20, fontWeight:800, color:'#22c55e', lineHeight:1 }}>{drv.delivered}</div>
+                      <div style={{ fontSize:10, color:'#6B8A7A', marginTop:2 }}>Delivered</div>
+                    </div>
+                    <div style={{ textAlign:'center', background:'#fff7ed', borderRadius:10, padding:'8px 14px' }}>
+                      <div style={{ fontSize:20, fontWeight:800, color:'#f97316', lineHeight:1 }}>{drv.active}</div>
+                      <div style={{ fontSize:10, color:'#9a3412', marginTop:2 }}>Active</div>
+                    </div>
+                    <div style={{ textAlign:'center', background:'#f8fafc', borderRadius:10, padding:'8px 14px' }}>
+                      <div style={{ fontSize:20, fontWeight:800, color:'#64748b', lineHeight:1 }}>{drv.total}</div>
+                      <div style={{ fontSize:10, color:'#94a3b8', marginTop:2 }}>Total</div>
+                    </div>
+                  </div>
+                </div>
+                {/* Trip list for this driver */}
+                <div style={{ display:'flex', flexDirection:'column' }}>
+                  {drv.reqs.map((req,i) => {
+                    const sc = S_COLOR[req.status] || { bg:'#f9fafb', text:'#374151', dot:'#9ca3af' };
+                    return (
+                      <div key={req.id} onClick={()=>setDetail(req)} style={{
+                        padding:'12px 20px', display:'flex', alignItems:'center', gap:12,
+                        borderTop: i===0 ? 'none' : '1px solid #f8fafc',
+                        cursor:'pointer', transition:'background 0.15s',
+                      }}
+                      onMouseEnter={e=>e.currentTarget.style.background='#f8fafc'}
+                      onMouseLeave={e=>e.currentTarget.style.background='transparent'}>
+                        <div style={{ fontSize:12, fontWeight:700, color:'#C4963C', background:'#fef9ec', border:'1px solid #fde68a', borderRadius:20, padding:'2px 8px', flexShrink:0 }}>
+                          RJ-{String(req.id).padStart(5,'0')}
+                        </div>
+                        <div style={{ flex:1, minWidth:0 }}>
+                          <div style={{ fontSize:13, fontWeight:600, color:'#0f172a' }}>{req.donor_name}</div>
+                          <div style={{ fontSize:12, color:'#94a3b8' }}>{req.food_type}{req.approx_kg ? ` · ${req.approx_kg} ppl` : ''}</div>
+                        </div>
+                        <div style={{ display:'inline-flex', alignItems:'center', gap:4, background:sc.bg, borderRadius:20, padding:'3px 9px', flexShrink:0 }}>
+                          <div style={{ width:5, height:5, borderRadius:'50%', background:sc.dot }}/>
+                          <span style={{ fontSize:11, fontWeight:700, color:sc.text }}>{S_LABEL[req.status]||req.status}</span>
+                        </div>
+                        <div style={{ fontSize:11, color:'#94a3b8', flexShrink:0 }}>
+                          {new Date(req.created_at).toLocaleDateString('en-IN',{day:'numeric',month:'short'})}
+                        </div>
+                        {req.pickup_photo && <span style={{ fontSize:14 }}>📷</span>}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
           </div>
-        </div>
+        )}
 
         {/* ── REQUEST CARDS ── */}
-        {loading ? (
+        {activeTab === 'requests' && (loading ? (
           <div style={{ textAlign:'center', padding:80, color:'#94a3b8' }}>
             <div style={{ fontSize:32, marginBottom:12 }}>⏳</div>
             <div style={{ fontSize:14 }}>Loading requests…</div>
           </div>
-        ) : requests.length === 0 ? (
+        ) : filtered.length === 0 ? (
           <div style={{ textAlign:'center', padding:80, color:'#94a3b8', background:'#fff', borderRadius:16, border:'1px solid #f1f5f9' }}>
             <div style={{ fontSize:40, marginBottom:12 }}>📭</div>
-            <div style={{ fontSize:16, fontWeight:600, color:'#64748b' }}>No requests found</div>
-            <div style={{ fontSize:13, marginTop:4 }}>Try a different filter or refresh</div>
+            <div style={{ fontSize:16, fontWeight:600, color:'#64748b' }}>{search ? 'No matches found' : 'No requests found'}</div>
+            <div style={{ fontSize:13, marginTop:4 }}>{search ? 'Try different keywords' : 'Try a different filter or refresh'}</div>
           </div>
         ) : (
           <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
-            {requests.map(req => {
+            {filtered.map(req => {
               const sc = S_COLOR[req.status] || { bg:'#f9fafb', text:'#374151', dot:'#9ca3af' };
               const lc = S_LEFT[req.status] || '#e2e8f0';
               const thumbs = req.photo_path ? req.photo_path.split(',').map(p => UPLOADS + p) : [];
@@ -423,7 +557,7 @@ export default function AdminPage() {
                     </div>
                   </div>
 
-                  {/* Time */}
+                  {/* Time + driver */}
                   <div style={{ minWidth:110, textAlign:'right' }}>
                     <div style={{ fontSize:12, color:'#64748b', fontWeight:500 }}>
                       {new Date(req.ready_by).toLocaleDateString('en-IN',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})}
@@ -431,6 +565,9 @@ export default function AdminPage() {
                     <div style={{ fontSize:11, color:'#94a3b8', marginTop:3 }}>
                       {new Date(req.created_at).toLocaleDateString('en-IN')}
                     </div>
+                    {req.driver_name && (
+                      <div style={{ fontSize:11, color:'#1B5E38', marginTop:3, fontWeight:600 }}>🚗 {req.driver_name}</div>
+                    )}
                   </div>
 
                   {/* Actions */}
@@ -474,7 +611,7 @@ export default function AdminPage() {
               );
             })}
           </div>
-        )}
+        ))}
       </div>
 
       {/* ── ASSIGN MODAL ── */}
@@ -648,6 +785,10 @@ export default function AdminPage() {
                     { label:'Pickup Address', value: req.pickup_address, span: true },
                     { label:'Ready By', value: req.ready_by ? new Date(req.ready_by).toLocaleString('en-IN',{day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}) : '—', span: false },
                     { label:'Submitted On', value: req.created_at ? new Date(req.created_at).toLocaleString('en-IN',{day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}) : '—', span: false },
+                    ...(req.driver_name ? [
+                      { label:'Assigned Driver', value: req.driver_name, span: false },
+                      { label:'Driver Phone', value: req.driver_phone||'—', link: req.driver_phone ? `tel:${req.driver_phone}` : undefined, span: false },
+                    ] : []),
                   ].map(item => (
                     <div key={item.label} style={{ gridColumn: item.span ? 'span 2' : undefined }}>
                       <div style={{ fontSize:10, fontWeight:700, letterSpacing:'1px', color:'#94a3b8', textTransform:'uppercase', marginBottom:3 }}>{item.label}</div>

@@ -112,11 +112,12 @@ export default function DriverPage() {
     try {
       let res: Response;
       if (photoFile) {
+        // Use POST — PHP only populates $_FILES on POST, not PUT
         const fd = new FormData();
         fd.append('status', action.next);
         fd.append('pickup_photo', photoFile);
         res = await fetch(`${API}/trips.php?id=${trip.id}&status=${action.next}`, {
-          method: 'PUT',
+          method: 'POST',
           headers: { Authorization: `Bearer ${token}` },
           body: fd,
         });
