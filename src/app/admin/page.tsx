@@ -443,7 +443,7 @@ export default function AdminPage() {
                     onMouseLeave={e=>{e.currentTarget.style.borderColor='#e2e8f0';e.currentTarget.style.background='#fff';}}>
                       Edit Status
                     </button>
-                    {['requested','under_review','assigned'].includes(req.status) && (
+                    {['requested','under_review'].includes(req.status) && (
                       <button onClick={e=>{e.stopPropagation();setAssign(req);setAssignDrv('');}} style={{
                         padding:'7px 16px', borderRadius:8, border:'1.5px solid #C4963C',
                         background:'linear-gradient(135deg,#fffbf2,#fff8e8)', color:'#92400e',
@@ -454,6 +454,18 @@ export default function AdminPage() {
                       onMouseEnter={e=>{e.currentTarget.style.background='linear-gradient(135deg,#C4963C,#D4A84B)';e.currentTarget.style.color='#fff';e.currentTarget.style.borderColor='#C4963C';}}
                       onMouseLeave={e=>{e.currentTarget.style.background='linear-gradient(135deg,#fffbf2,#fff8e8)';e.currentTarget.style.color='#92400e';e.currentTarget.style.borderColor='#C4963C';}}>
                         🚗 Assign Driver
+                      </button>
+                    )}
+                    {req.status === 'assigned' && (
+                      <button onClick={e=>{e.stopPropagation();setAssign(req);setAssignDrv('');}} style={{
+                        padding:'7px 14px', borderRadius:8, border:'1.5px solid #8b5cf6',
+                        background:'#f5f3ff', color:'#5b21b6',
+                        fontSize:12, cursor:'pointer', fontWeight:600,
+                        transition:'all 0.15s', display:'flex', alignItems:'center', gap:5,
+                      }}
+                      onMouseEnter={e=>{e.currentTarget.style.background='#ede9fe';}}
+                      onMouseLeave={e=>{e.currentTarget.style.background='#f5f3ff';}}>
+                        ↺ Reassign
                       </button>
                     )}
                   </div>
@@ -665,13 +677,20 @@ export default function AdminPage() {
                     flex:1, minWidth:120, padding:'11px 16px', borderRadius:10, border:'1.5px solid #e2e8f0',
                     background:'#fff', color:'#334155', fontSize:13, cursor:'pointer', fontWeight:600,
                   }}>✏️ Edit Status</button>
-                  {['requested','under_review','assigned'].includes(req.status) && (
+                  {['requested','under_review'].includes(req.status) && (
                     <button onClick={()=>{setAssign(req);setAssignDrv('');setDetail(null);}} style={{
                       flex:2, minWidth:160, padding:'11px 20px', borderRadius:10, border:'none',
                       background:'linear-gradient(135deg,#C4963C,#D4A84B)', color:'#fff',
                       fontSize:13, cursor:'pointer', fontWeight:700,
                       boxShadow:'0 4px 16px rgba(196,150,60,0.3)',
                     }}>🚗 Assign Driver</button>
+                  )}
+                  {req.status === 'assigned' && (
+                    <button onClick={()=>{setAssign(req);setAssignDrv('');setDetail(null);}} style={{
+                      flex:2, minWidth:160, padding:'11px 20px', borderRadius:10,
+                      border:'1.5px solid #8b5cf6', background:'#f5f3ff', color:'#5b21b6',
+                      fontSize:13, cursor:'pointer', fontWeight:700,
+                    }}>↺ Reassign Driver</button>
                   )}
                 </div>
               </div>
