@@ -393,18 +393,29 @@ export default function Home() {
       </section>
 
       {/* ══ CTA BAND ══════════════════════════════════════════════ */}
-      <section className="grain" style={{
-        background: 'linear-gradient(135deg, #0F3D1F 0%, #1B5E38 50%, #0F3D1F 100%)',
-        padding: '100px 24px', textAlign: 'center', position: 'relative',
-      }}>
-        <div style={{ position: 'absolute', inset: 0, backgroundImage: 'radial-gradient(circle at 50% 50%, rgba(196,150,60,0.1) 0%, transparent 60%)', pointerEvents: 'none', zIndex: 1 }}/>
-        <div style={{ position: 'relative', zIndex: 2, maxWidth: 640, margin: '0 auto' }}>
+      <section style={{ position: 'relative', overflow: 'hidden', padding: '120px 24px', textAlign: 'center' }}>
+        {/* Volunteer photo background */}
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/volunteer.jpg" alt="" aria-hidden style={{
+          position: 'absolute', inset: 0, width: '100%', height: '100%',
+          objectFit: 'cover', objectPosition: 'center 25%',
+          pointerEvents: 'none', zIndex: 0,
+        }}/>
+        {/* Dark green overlay */}
+        <div style={{
+          position: 'absolute', inset: 0, zIndex: 1,
+          background: 'linear-gradient(135deg, rgba(10,40,18,0.86) 0%, rgba(15,61,31,0.78) 50%, rgba(10,40,18,0.90) 100%)',
+        }}/>
+        {/* Gold glow */}
+        <div style={{ position: 'absolute', inset: 0, zIndex: 2, backgroundImage: 'radial-gradient(ellipse at 50% 50%, rgba(196,150,60,0.12) 0%, transparent 65%)', pointerEvents: 'none' }}/>
+
+        <div style={{ position: 'relative', zIndex: 3, maxWidth: 640, margin: '0 auto' }}>
           <div className="reveal section-tag">Join Us</div>
-          <h2 className="reveal" style={{ fontSize: 'clamp(28px,4.5vw,52px)', fontWeight: 900, color: '#fff', letterSpacing: '-1.5px', marginBottom: 18, lineHeight: 1.1 }}>
+          <h2 className="reveal" style={{ fontSize: 'clamp(28px,4.5vw,52px)', fontWeight: 900, color: '#fff', letterSpacing: '-1.5px', marginBottom: 18, lineHeight: 1.1, textShadow: '0 2px 20px rgba(0,0,0,0.4)' }}>
             Ready to make a difference?
           </h2>
           <div className="reveal gold-rule" style={{ margin: '0 auto 28px' }}/>
-          <p className="reveal" style={{ color: 'rgba(255,255,255,0.6)', fontSize: 16, marginBottom: 44, lineHeight: 1.7 }}>
+          <p className="reveal" style={{ color: 'rgba(255,255,255,0.7)', fontSize: 16, marginBottom: 44, lineHeight: 1.7 }}>
             It takes less than 2 minutes to submit a food pickup request.<br />Your surplus meal can be someone&apos;s only meal today.
           </p>
           <div className="reveal" style={{ display: 'flex', gap: 14, justifyContent: 'center', flexWrap: 'wrap' }}>
