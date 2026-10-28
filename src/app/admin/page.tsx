@@ -17,7 +17,8 @@ type Request = {
   status: string;
   created_at: string;
   requester_name: string;
-  photo_path?: string; // comma-separated relative paths
+  photo_path?: string;    // comma-separated food photos (from give form)
+  pickup_photo?: string;  // driver pickup photo (from trips table)
 };
 type Driver = { id: number; name: string; phone: string; vehicle_type: string; vehicle_number: string; };
 
@@ -605,9 +606,9 @@ export default function AdminPage() {
 
               <div style={{ padding:'24px 28px 32px' }}>
 
-                {/* Photos */}
+                {/* Food photos (submitted with request) */}
                 {thumbs.length > 0 && (
-                  <div style={{ marginBottom:24 }}>
+                  <div style={{ marginBottom:20 }}>
                     <div style={{ fontSize:11, fontWeight:700, letterSpacing:'1.5px', color:'#94a3b8', textTransform:'uppercase', marginBottom:10 }}>Food Photos</div>
                     <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(110px,1fr))', gap:8 }}>
                       {thumbs.map((url,i) => (
@@ -617,6 +618,22 @@ export default function AdminPage() {
                         />
                       ))}
                     </div>
+                  </div>
+                )}
+
+                {/* Pickup photo (taken by driver) */}
+                {req.pickup_photo && (
+                  <div style={{ marginBottom:20 }}>
+                    <div style={{ fontSize:11, fontWeight:700, letterSpacing:'1.5px', color:'#06b6d4', textTransform:'uppercase', marginBottom:10, display:'flex', alignItems:'center', gap:6 }}>
+                      <span>📦</span> Pickup Photo · Driver
+                    </div>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={UPLOADS + req.pickup_photo}
+                      alt="Driver pickup photo"
+                      onClick={()=>setLightbox(UPLOADS + req.pickup_photo!)}
+                      style={{ width:'100%', maxHeight:260, objectFit:'cover', borderRadius:14, cursor:'zoom-in', border:'2px solid #cffafe', display:'block' }}
+                    />
                   </div>
                 )}
 

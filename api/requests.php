@@ -17,10 +17,12 @@ if ($method === 'GET') {
     if ($id) {
         $stmt = $pdo->prepare("
             SELECT r.*, d.name AS donor_name, d.phone AS donor_phone,
-                   d.address AS donor_address, u.name AS requester_name
+                   d.address AS donor_address, u.name AS requester_name,
+                   t.pickup_photo, t.driver_id
             FROM requests r
             JOIN donors  d ON d.id = r.donor_id
             JOIN users   u ON u.id = r.requested_by
+            LEFT JOIN trips t ON t.request_id = r.id
             WHERE r.id = ?
         ");
         $stmt->execute([$id]);
@@ -34,10 +36,12 @@ if ($method === 'GET') {
     if ($me['role'] === 'admin') {
         $status = $_GET['status'] ?? '';
         $sql = "SELECT r.*, d.name AS donor_name, d.phone AS donor_phone,
-                       d.address AS donor_address, u.name AS requester_name
+                       d.address AS donor_address, u.name AS requester_name,
+                       t.pickup_photo, t.driver_id
                 FROM requests r
                 JOIN donors d ON d.id = r.donor_id
-                JOIN users  u ON u.id = r.requested_by";
+                JOIN users  u ON u.id = r.requested_by
+                LEFT JOIN trips t ON t.request_id = r.id";
         $params = [];
         if ($status) { $sql .= " WHERE r.status = ?"; $params[] = $status; }
         $sql .= " ORDER BY r.created_at DESC LIMIT 200";
