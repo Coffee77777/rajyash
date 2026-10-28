@@ -1,8 +1,6 @@
 -- Rajyash v1 database (separate from any other project)
 -- Target: MySQL 8, utf8mb4. Draft; refine during build.
-
-CREATE DATABASE IF NOT EXISTS rajyash CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-USE rajyash;
+-- Run inside u721015971_rajyash (already created via Hostinger panel).
 
 CREATE TABLE users (
   id            INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
