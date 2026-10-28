@@ -326,135 +326,147 @@ export default function DriverPage() {
   }
 
   // ── DRIVER DASHBOARD ──────────────────────────────────────────────
-  const activeTrips = trips.filter(t => t.status !== 'delivered');
-  const completedTrips = trips.filter(t => t.status === 'delivered');
+  const activeTrips   = trips.filter(t => t.status !== 'delivered' && t.status !== 'cancelled');
+  const completedTrips = trips.filter(t => t.status === 'delivered' || t.status === 'cancelled');
+
+  const TRIP_STATUS_COLOR: Record<string, { bg: string; text: string; dot: string }> = {
+    assigned:     { bg:'#fef9ec', text:'#92400e', dot:'#f59e0b' },
+    ride_started: { bg:'#fff7ed', text:'#9a3412', dot:'#f97316' },
+    picked_up:    { bg:'#ecfeff', text:'#155e75', dot:'#06b6d4' },
+    delivered:    { bg:'#f0fdf4', text:'#166534', dot:'#22c55e' },
+    cancelled:    { bg:'#f9fafb', text:'#4b5563', dot:'#9ca3af' },
+  };
+  const TRIP_STATUS_LABEL: Record<string, string> = {
+    assigned:'Assigned', ride_started:'On the Way', picked_up:'Picked Up',
+    delivered:'Delivered', cancelled:'Cancelled',
+  };
 
   return (
-    <div style={{
-      minHeight: '100vh', background: '#0f1117',
-      fontFamily: 'Inter, system-ui, sans-serif', color: '#e5e7eb',
-    }}>
-      {/* Header */}
+    <div style={{ minHeight:'100vh', background:'#f1f5f9', fontFamily:'Inter,system-ui,sans-serif' }}>
+
+      {/* ── HEADER ── */}
       <div style={{
-        background: 'rgba(10,46,30,0.95)', borderBottom: '1px solid rgba(255,255,255,0.07)',
-        padding: '0 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        height: '64px', position: 'sticky', top: 0, zIndex: 100, backdropFilter: 'blur(20px)',
+        background:'#fff', borderBottom:'1px solid #e2e8f0',
+        padding:'0 24px', height:64,
+        display:'flex', alignItems:'center', justifyContent:'space-between',
+        position:'sticky', top:0, zIndex:100,
+        boxShadow:'0 1px 3px rgba(0,0,0,0.06)',
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-          <Image src="/rajyash-logo.png" alt="Rajyash Foundation" width={110} height={38}
-            style={{ objectFit: 'contain', filter: 'brightness(0) invert(1)', opacity: 0.92 }} />
-          <div style={{ width: 1, height: 28, background: 'rgba(255,255,255,0.12)' }} />
+        <div style={{ display:'flex', alignItems:'center', gap:14 }}>
+          <Image src="/rajyash-logo.png" alt="Rajyash Foundation" width={120} height={40} style={{ objectFit:'contain' }} priority />
+          <div style={{ width:1, height:28, background:'#e2e8f0' }}/>
           <div>
-            <span style={{ fontWeight: 700, color: '#fff', fontSize: '15px' }}>
-              {driverName || 'Driver'}
-            </span>
-            <span style={{ color: 'rgba(255,255,255,0.35)', fontSize: '12px', display: 'block', lineHeight: 1.2 }}>Driver Portal</span>
+            <div style={{ fontWeight:700, color:'#0f172a', fontSize:14, lineHeight:1.1 }}>{driverName || 'Driver'}</div>
+            <div style={{ fontSize:11, color:'#94a3b8' }}>Driver Portal</div>
           </div>
         </div>
-        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-          <button onClick={() => fetchTrips(token!)} style={{
-            background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.12)',
-            color: '#9ca3af', padding: '6px 14px', borderRadius: '8px', cursor: 'pointer', fontSize: '13px',
+        <div style={{ display:'flex', gap:8 }}>
+          <button onClick={()=>fetchTrips(token!)} style={{
+            padding:'7px 14px', borderRadius:8, border:'1.5px solid #e2e8f0',
+            background:'#fff', color:'#64748b', cursor:'pointer', fontSize:13, fontWeight:500,
           }}>↻</button>
           <button onClick={logout} style={{
-            background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.12)',
-            color: '#9ca3af', padding: '6px 14px', borderRadius: '8px', cursor: 'pointer', fontSize: '13px',
+            padding:'7px 14px', borderRadius:8, border:'1.5px solid #e2e8f0',
+            background:'#fff', color:'#64748b', cursor:'pointer', fontSize:13, fontWeight:500,
           }}>Sign Out</button>
         </div>
       </div>
 
-      <div style={{ maxWidth: '680px', margin: '0 auto', padding: '28px 20px' }}>
+      <div style={{ maxWidth:640, margin:'0 auto', padding:'24px 16px 80px' }}>
         {loading ? (
-          <div style={{ textAlign: 'center', padding: '80px', color: 'rgba(255,255,255,0.3)' }}>Loading trips…</div>
-        ) : activeTrips.length === 0 && completedTrips.length === 0 ? (
-          <div style={{
-            textAlign: 'center', padding: '60px 24px',
-            background: 'rgba(255,255,255,0.02)', borderRadius: '20px',
-            border: '1px solid rgba(255,255,255,0.06)',
-          }}>
-            <div style={{ fontSize: '48px', marginBottom: '16px' }}>🌿</div>
-            <div style={{ color: '#fff', fontSize: '18px', fontWeight: 600 }}>No trips assigned yet</div>
-            <div style={{ color: 'rgba(255,255,255,0.35)', fontSize: '14px', marginTop: '8px' }}>
-              Check back soon — the admin will assign a pickup to you
-            </div>
+          <div style={{ textAlign:'center', padding:'80px 0', color:'#94a3b8' }}>
+            <div style={{ fontSize:32, marginBottom:12 }}>⏳</div>
+            <div style={{ fontSize:14 }}>Loading trips…</div>
+          </div>
+        ) : trips.length === 0 ? (
+          <div style={{ textAlign:'center', padding:'64px 24px', background:'#fff', borderRadius:20, border:'1px solid #f1f5f9', boxShadow:'0 1px 4px rgba(0,0,0,0.05)' }}>
+            <div style={{ fontSize:48, marginBottom:16 }}>🌿</div>
+            <div style={{ fontSize:18, fontWeight:700, color:'#0f172a', marginBottom:8 }}>No trips yet</div>
+            <div style={{ fontSize:14, color:'#94a3b8' }}>Admin will assign a pickup to you shortly</div>
           </div>
         ) : (
           <>
-            {/* Active trips */}
+            {/* ── ACTIVE TRIPS ── */}
             {activeTrips.length > 0 && (
-              <div style={{ marginBottom: '32px' }}>
-                <h2 style={{ color: '#fff', fontSize: '16px', fontWeight: 700, marginBottom: '16px' }}>
-                  Active Trips <span style={{ color: 'rgba(255,255,255,0.35)', fontWeight: 400 }}>({activeTrips.length})</span>
-                </h2>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <div style={{ marginBottom:28 }}>
+                <div style={{ fontSize:11, fontWeight:700, letterSpacing:'1.5px', color:'#C4963C', textTransform:'uppercase', marginBottom:14 }}>
+                  Active · {activeTrips.length}
+                </div>
+                <div style={{ display:'flex', flexDirection:'column', gap:16 }}>
                   {activeTrips.map(trip => {
-                    const action = NEXT_ACTION[trip.status];
-                    const stepIdx = STEPS.findIndex(s => s.status === trip.status);
+                    const action   = NEXT_ACTION[trip.status];
+                    const stepIdx  = STEPS.findIndex(s => s.status === trip.status);
+                    const sc       = TRIP_STATUS_COLOR[trip.status] || TRIP_STATUS_COLOR.assigned;
                     return (
                       <div key={trip.id} style={{
-                        background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.09)',
-                        borderRadius: '18px', padding: '24px', overflow: 'hidden',
+                        background:'#fff', borderRadius:20,
+                        boxShadow:'0 2px 12px rgba(0,0,0,0.07)',
+                        border:'1px solid #f1f5f9',
+                        overflow:'hidden',
                       }}>
-                        {/* Progress bar */}
-                        <div style={{ display: 'flex', gap: '6px', marginBottom: '20px' }}>
-                          {STEPS.map((step, i) => (
-                            <div key={step.status} style={{ flex: 1 }}>
-                              <div style={{
-                                height: '4px', borderRadius: '2px',
-                                background: i <= stepIdx ? '#22c55e' : 'rgba(255,255,255,0.1)',
-                                transition: 'background 0.3s',
-                              }} />
-                              <div style={{
-                                fontSize: '10px', color: i <= stepIdx ? '#22c55e' : 'rgba(255,255,255,0.25)',
-                                marginTop: '5px', textAlign: 'center',
-                              }}>{step.label}</div>
+                        {/* Green accent top bar */}
+                        <div style={{ height:4, background:'linear-gradient(90deg,#0F3D1F,#1B5E38,#C4963C)' }}/>
+
+                        <div style={{ padding:'20px 22px 22px' }}>
+                          {/* Header row */}
+                          <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:16 }}>
+                            <div>
+                              <div style={{ fontSize:18, fontWeight:800, color:'#0f172a', letterSpacing:'-0.3px' }}>{trip.food_type}</div>
+                              {trip.approx_kg ? <div style={{ fontSize:13, color:'#64748b', marginTop:2 }}>~{trip.approx_kg} people</div> : null}
                             </div>
-                          ))}
-                        </div>
-
-                        {/* Trip info */}
-                        <div style={{ marginBottom: '20px' }}>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
-                            <span style={{ color: '#fff', fontWeight: 700, fontSize: '16px' }}>
-                              {trip.food_type}
-                              {trip.approx_kg ? <span style={{ color: 'rgba(255,255,255,0.4)', fontWeight: 400, fontSize: '14px' }}> · ~{trip.approx_kg} kg</span> : null}
-                            </span>
-                            <span style={{ color: '#f59e0b', fontSize: '12px', fontWeight: 600, background: 'rgba(245,158,11,0.1)', padding: '3px 10px', borderRadius: '12px', border: '1px solid rgba(245,158,11,0.25)' }}>
-                              #{String(trip.id).padStart(4, '0')}
-                            </span>
+                            <div style={{ display:'flex', flexDirection:'column', alignItems:'flex-end', gap:6 }}>
+                              <div style={{ fontSize:12, fontWeight:700, color:'#C4963C', background:'#fef9ec', border:'1px solid #fde68a', borderRadius:20, padding:'3px 10px' }}>
+                                RJ-{String(trip.id).padStart(5,'0')}
+                              </div>
+                              <div style={{ display:'inline-flex', alignItems:'center', gap:5, background:sc.bg, borderRadius:20, padding:'3px 10px' }}>
+                                <div style={{ width:6, height:6, borderRadius:'50%', background:sc.dot, boxShadow:`0 0 5px ${sc.dot}` }}/>
+                                <span style={{ fontSize:11, fontWeight:700, color:sc.text }}>{TRIP_STATUS_LABEL[trip.status]||trip.status}</span>
+                              </div>
+                            </div>
                           </div>
 
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                            <InfoRow icon="👤" label={trip.donor_name} sub={trip.donor_phone} />
-                            <InfoRow icon="📍" label={trip.pickup_address} />
-                            <InfoRow icon="🏠" label={trip.donor_address} />
-                            <InfoRow icon="🕐" label={`Ready by: ${new Date(trip.ready_by).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}`} />
+                          {/* Progress steps */}
+                          <div style={{ display:'flex', gap:6, marginBottom:20 }}>
+                            {STEPS.map((step, i) => {
+                              const done = i < stepIdx, active = i === stepIdx;
+                              return (
+                                <div key={step.status} style={{ flex:1, textAlign:'center' }}>
+                                  <div style={{ height:5, borderRadius:3, background: done||active ? (done?'#1B5E38':'#C4963C') : '#e2e8f0', transition:'background 0.3s' }}/>
+                                  <div style={{ fontSize:9, fontWeight:600, color: done||active ? (done?'#1B5E38':'#C4963C') : '#cbd5e1', marginTop:4, textTransform:'uppercase', letterSpacing:'0.3px' }}>
+                                    {step.label}
+                                  </div>
+                                </div>
+                              );
+                            })}
                           </div>
-                        </div>
 
-                        {/* Call button + action */}
-                        <div style={{ display: 'flex', gap: '10px' }}>
-                          <a
-                            href={`tel:${trip.donor_phone}`}
-                            style={{
-                              flex: 1, padding: '13px', borderRadius: '10px', textDecoration: 'none',
-                              background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)',
-                              color: '#9ca3af', fontSize: '14px', fontWeight: 500,
-                              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
-                            }}
-                          >📞 Call Donor</a>
-                          {action && (
-                            <button
-                              onClick={() => advanceTrip(trip)}
-                              disabled={advancing === trip.id}
-                              style={{
-                                flex: 2, padding: '13px', borderRadius: '10px', border: 'none',
-                                background: `linear-gradient(135deg, ${action.color}, ${action.color}cc)`,
-                                color: '#fff', fontWeight: 700, fontSize: '14px',
-                                cursor: 'pointer', opacity: advancing === trip.id ? 0.7 : 1,
-                              }}
-                            >{advancing === trip.id ? '…' : action.label}</button>
-                          )}
+                          {/* Details grid */}
+                          <div style={{ background:'#f8fafc', borderRadius:14, padding:'14px 16px', marginBottom:16, display:'flex', flexDirection:'column', gap:10 }}>
+                            <DetailRow icon="👤" label="Donor" value={trip.donor_name} badge={trip.donor_phone} />
+                            <DetailRow icon="📍" label="Pickup" value={trip.pickup_address} />
+                            {trip.donor_address && <DetailRow icon="🏠" label="Address" value={trip.donor_address} />}
+                            <DetailRow icon="🕐" label="Ready by" value={new Date(trip.ready_by).toLocaleString('en-IN',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})} />
+                          </div>
+
+                          {/* Actions */}
+                          <div style={{ display:'flex', gap:10 }}>
+                            <a href={`tel:${trip.donor_phone}`} style={{
+                              flex:1, padding:'13px', borderRadius:12, textDecoration:'none',
+                              background:'#f8fafc', border:'1.5px solid #e2e8f0',
+                              color:'#334155', fontSize:14, fontWeight:600,
+                              display:'flex', alignItems:'center', justifyContent:'center', gap:6,
+                            }}>📞 Call</a>
+                            {action && (
+                              <button onClick={()=>advanceTrip(trip)} disabled={advancing===trip.id} style={{
+                                flex:2, padding:'13px', borderRadius:12, border:'none',
+                                background: advancing===trip.id ? '#e2e8f0' : `linear-gradient(135deg,${action.color},${action.color}dd)`,
+                                color: advancing===trip.id ? '#94a3b8' : '#fff',
+                                fontWeight:800, fontSize:14, cursor: advancing===trip.id ? 'not-allowed' : 'pointer',
+                                boxShadow: advancing===trip.id ? 'none' : `0 4px 16px ${action.color}40`,
+                                transition:'all 0.2s',
+                              }}>{advancing===trip.id ? '…' : action.label}</button>
+                            )}
+                          </div>
                         </div>
                       </div>
                     );
@@ -463,30 +475,48 @@ export default function DriverPage() {
               </div>
             )}
 
-            {/* Completed trips */}
+            {/* ── COMPLETED TRIPS ── */}
             {completedTrips.length > 0 && (
               <div>
-                <h2 style={{ color: 'rgba(255,255,255,0.45)', fontSize: '14px', fontWeight: 600, marginBottom: '12px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                  Completed ({completedTrips.length})
-                </h2>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                  {completedTrips.slice(0, 5).map(trip => (
-                    <div key={trip.id} style={{
-                      background: 'rgba(34,197,94,0.04)', border: '1px solid rgba(34,197,94,0.12)',
-                      borderRadius: '12px', padding: '16px 20px',
-                      display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                    }}>
-                      <div>
-                        <div style={{ color: '#d1fae5', fontWeight: 600, fontSize: '14px' }}>{trip.food_type}</div>
-                        <div style={{ color: 'rgba(255,255,255,0.35)', fontSize: '12px', marginTop: '2px' }}>{trip.donor_name} · {trip.pickup_address}</div>
+                <div style={{ fontSize:11, fontWeight:700, letterSpacing:'1.5px', color:'#94a3b8', textTransform:'uppercase', marginBottom:14 }}>
+                  Completed · {completedTrips.length}
+                </div>
+                <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
+                  {completedTrips.map(trip => {
+                    const sc = TRIP_STATUS_COLOR[trip.status] || TRIP_STATUS_COLOR.delivered;
+                    return (
+                      <div key={trip.id} style={{
+                        background:'#fff', borderRadius:16,
+                        border:'1px solid #f1f5f9', borderLeft:'4px solid #22c55e',
+                        padding:'18px 20px',
+                        boxShadow:'0 1px 4px rgba(0,0,0,0.04)',
+                      }}>
+                        {/* Top */}
+                        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:12 }}>
+                          <div>
+                            <div style={{ fontSize:16, fontWeight:700, color:'#0f172a' }}>{trip.food_type}</div>
+                            {trip.approx_kg ? <div style={{ fontSize:12, color:'#94a3b8', marginTop:1 }}>~{trip.approx_kg} people</div> : null}
+                          </div>
+                          <div style={{ display:'flex', flexDirection:'column', alignItems:'flex-end', gap:5 }}>
+                            <span style={{ fontSize:11, fontWeight:700, color:'#C4963C', background:'#fef9ec', border:'1px solid #fde68a', borderRadius:20, padding:'2px 9px' }}>
+                              RJ-{String(trip.id).padStart(5,'0')}
+                            </span>
+                            <div style={{ display:'inline-flex', alignItems:'center', gap:4, background:sc.bg, borderRadius:20, padding:'2px 9px' }}>
+                              <div style={{ width:5, height:5, borderRadius:'50%', background:sc.dot }}/>
+                              <span style={{ fontSize:10, fontWeight:700, color:sc.text }}>{TRIP_STATUS_LABEL[trip.status]||trip.status}</span>
+                            </div>
+                          </div>
+                        </div>
+                        {/* Details */}
+                        <div style={{ display:'flex', flexDirection:'column', gap:7 }}>
+                          <DetailRow icon="👤" label="Donor" value={trip.donor_name} badge={trip.donor_phone} muted />
+                          <DetailRow icon="📍" label="Pickup" value={trip.pickup_address} muted />
+                          {trip.donor_address && <DetailRow icon="🏠" label="Address" value={trip.donor_address} muted />}
+                          <DetailRow icon="🕐" label="Ready by" value={new Date(trip.ready_by).toLocaleString('en-IN',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})} muted />
+                        </div>
                       </div>
-                      <div style={{
-                        color: '#22c55e', fontSize: '11px', fontWeight: 600,
-                        background: 'rgba(34,197,94,0.1)', padding: '4px 10px',
-                        borderRadius: '12px', border: '1px solid rgba(34,197,94,0.2)',
-                      }}>Delivered</div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             )}
@@ -607,14 +637,26 @@ export default function DriverPage() {
   );
 }
 
-function InfoRow({ icon, label, sub }: { icon: string; label: string; sub?: string }) {
+function DetailRow({ icon, label, value, badge, muted }: {
+  icon: string; label: string; value: string; badge?: string; muted?: boolean;
+}) {
   return (
-    <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
-      <span style={{ fontSize: '14px', flexShrink: 0, marginTop: '1px' }}>{icon}</span>
-      <div>
-        <div style={{ color: 'rgba(255,255,255,0.75)', fontSize: '13px', lineHeight: '1.4' }}>{label}</div>
-        {sub && <div style={{ color: 'rgba(255,255,255,0.4)', fontSize: '12px' }}>{sub}</div>}
+    <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
+      <span style={{ fontSize: 14, flexShrink: 0, marginTop: 1 }}>{icon}</span>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontSize: 10, fontWeight: 700, color: muted ? '#b0bec5' : '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 1 }}>{label}</div>
+        <div style={{ fontSize: 13, color: muted ? '#64748b' : '#1e293b', fontWeight: 500, wordBreak: 'break-word' }}>{value}</div>
       </div>
+      {badge && (
+        <a href={`tel:${badge}`} style={{
+          flexShrink: 0, fontSize: 11, fontWeight: 700,
+          color: muted ? '#64748b' : '#1B5E38',
+          background: muted ? '#f1f5f9' : '#f0fdf4',
+          border: `1px solid ${muted ? '#e2e8f0' : '#bbf7d0'}`,
+          borderRadius: 20, padding: '2px 8px',
+          textDecoration: 'none',
+        }}>{badge}</a>
+      )}
     </div>
   );
 }
