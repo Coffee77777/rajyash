@@ -46,11 +46,11 @@ function TrackContent() {
   const activeStep = currentStep >= 0 ? STEPS[currentStep] : null;
 
   return (
-    <div style={{ minHeight:'100vh', background:'#0A2E1E', fontFamily:'Inter, system-ui, sans-serif' }}>
+    <div style={{ minHeight:'100vh', background:'#0F3D1F', fontFamily:'Inter, system-ui, sans-serif' }}>
       {/* Header */}
       <div style={{ padding:'28px 24px 0', maxWidth:600, margin:'0 auto' }}>
         <Link href="/" style={{ color:'rgba(168,197,181,0.6)', fontSize:13, textDecoration:'none', display:'inline-flex', alignItems:'center', gap:6, transition:'color 0.2s' }}
-          onMouseEnter={e => (e.currentTarget.style.color='#A8C5B5')}
+          onMouseEnter={e => (e.currentTarget.style.color='rgba(255,255,255,0.55)')}
           onMouseLeave={e => (e.currentTarget.style.color='rgba(168,197,181,0.6)')}>
           ← Home
         </Link>
@@ -60,8 +60,8 @@ function TrackContent() {
         {/* Title */}
         <div style={{ marginBottom:36 }}>
           <div style={{ display:'inline-flex', alignItems:'center', gap:8, background:'rgba(245,151,19,0.1)', border:'1px solid rgba(245,151,19,0.25)', borderRadius:50, padding:'6px 16px', marginBottom:18 }}>
-            <div style={{ width:6, height:6, borderRadius:'50%', background:'#F59713', boxShadow:'0 0 8px #F59713' }}/>
-            <span style={{ color:'#FDB944', fontSize:11, fontWeight:600, letterSpacing:'0.8px' }}>LIVE TRACKING</span>
+            <div style={{ width:6, height:6, borderRadius:'50%', background:'#C4963C', boxShadow:'0 0 8px #C4963C' }}/>
+            <span style={{ color:'#D4A84B', fontSize:11, fontWeight:600, letterSpacing:'0.8px' }}>LIVE TRACKING</span>
           </div>
           <h1 style={{ fontSize:'clamp(30px,5vw,48px)', fontWeight:900, color:'#fff', letterSpacing:'-1.5px', marginBottom:10 }}>
             Where&apos;s your food going?
@@ -85,7 +85,7 @@ function TrackContent() {
               onFocus={e => (e.target.style.borderColor='rgba(245,151,19,0.6)')}
               onBlur={e => (e.target.style.borderColor='rgba(255,255,255,0.15)')}
             />
-            <button onClick={() => search()} disabled={loading} className="btn-saffron"
+            <button onClick={() => search()} disabled={loading} className="btn-gold"
               style={{ padding:'13px 24px', fontSize:14, whiteSpace:'nowrap', opacity:loading ? 0.7 : 1 }}>
               {loading ? '…' : 'Track →'}
             </button>
@@ -102,7 +102,7 @@ function TrackContent() {
           <div style={{ borderRadius:24, overflow:'hidden', background:'#fff', boxShadow:'0 32px 80px rgba(0,0,0,0.35)' }}>
             {/* Card header */}
             <div style={{
-              background: activeStep ? `linear-gradient(135deg, #0A2E1E, #145C3A)` : '#0A2E1E',
+              background: activeStep ? `linear-gradient(135deg, #0F3D1F, #1B5E38)` : '#0F3D1F',
               padding:'28px 28px 32px', position:'relative', overflow:'hidden',
             }}>
               <div style={{ position:'absolute', top:-40, right:-40, width:180, height:180, borderRadius:'50%', background:'rgba(255,255,255,0.03)', pointerEvents:'none' }}/>
@@ -144,7 +144,7 @@ function TrackContent() {
 
             {/* Timeline */}
             <div style={{ padding:'32px 28px 36px' }}>
-              <div style={{ fontSize:10, fontWeight:700, letterSpacing:'2px', color:'#F59713', marginBottom:28, textTransform:'uppercase' }}>
+              <div style={{ fontSize:10, fontWeight:700, letterSpacing:'2px', color:'#C4963C', marginBottom:28, textTransform:'uppercase' }}>
                 Live Status Timeline
               </div>
 
@@ -158,7 +158,7 @@ function TrackContent() {
                 <div style={{
                   position:'absolute', left:19, top:20, width:2,
                   height: currentStep >= 0 ? `${Math.min((currentStep / (STEPS.length - 1)) * 100, 100)}%` : '0%',
-                  background:'linear-gradient(to bottom, #0A2E1E, #145C3A)',
+                  background:'linear-gradient(to bottom, #0F3D1F, #1B5E38)',
                   zIndex:1, borderRadius:2,
                   transition:'height 0.8s cubic-bezier(0.4,0,0.2,1)',
                 }}/>
@@ -184,7 +184,7 @@ function TrackContent() {
                           fontSize:16,
                           position:'relative',
                           ...(done ? {
-                            background:'#0A2E1E',
+                            background:'#0F3D1F',
                           } : active ? {
                             background:`linear-gradient(135deg, ${step.color}, ${step.color}cc)`,
                             boxShadow:`0 0 0 4px ${step.color}20, 0 0 20px ${step.color}30`,
@@ -213,7 +213,7 @@ function TrackContent() {
                         <div style={{ paddingTop:8 }}>
                           <div style={{
                             fontSize:15, fontWeight: active ? 800 : done ? 600 : 500,
-                            color: active ? '#0A2E1E' : done ? '#145C3A' : '#9ca3af',
+                            color: active ? '#0F3D1F' : done ? '#1B5E38' : '#9ca3af',
                             marginBottom: (done || active) ? 3 : 0,
                             lineHeight:1.2,
                           }}>{step.label}</div>
@@ -243,7 +243,7 @@ function TrackContent() {
                   Submitted {request.created_at ? new Date(request.created_at).toLocaleDateString('en-IN', { day:'numeric', month:'short', year:'numeric' }) : ''}
                 </div>
                 <Link href="/give" style={{
-                  fontSize:13, color:'#F59713', textDecoration:'none', fontWeight:600,
+                  fontSize:13, color:'#C4963C', textDecoration:'none', fontWeight:600,
                   display:'inline-flex', alignItems:'center', gap:5,
                 }}
                   onMouseEnter={e => (e.currentTarget.style.opacity='0.75')}
@@ -270,7 +270,7 @@ function TrackContent() {
 export default function TrackPage() {
   return (
     <Suspense fallback={
-      <div style={{ minHeight:'100vh', background:'#0A2E1E', display:'flex', alignItems:'center', justifyContent:'center' }}>
+      <div style={{ minHeight:'100vh', background:'#0F3D1F', display:'flex', alignItems:'center', justifyContent:'center' }}>
         <div style={{ color:'rgba(168,197,181,0.5)', fontSize:14 }}>Loading…</div>
       </div>
     }>

@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
+import Image from 'next/image';
 import Link from 'next/link';
 
 function useCounter(target: number, duration = 2400) {
@@ -28,79 +29,57 @@ function useCounter(target: number, duration = 2400) {
 function useReveal() {
   useEffect(() => {
     const els = document.querySelectorAll('.reveal');
-    const obs = new IntersectionObserver(e => e.forEach(en => { if (en.isIntersecting) en.target.classList.add('visible'); }), { threshold: 0.1 });
+    const obs = new IntersectionObserver(e => e.forEach(en => { if (en.isIntersecting) en.target.classList.add('visible'); }), { threshold: 0.08 });
     els.forEach(el => obs.observe(el));
     return () => obs.disconnect();
   }, []);
 }
 
-const FLOATERS = [
-  { emoji: '🍱', top: '15%', left: '8%',  size: 32, delay: '0s',   dur: '7s' },
-  { emoji: '🌾', top: '25%', right: '9%', size: 28, delay: '1.2s', dur: '9s' },
-  { emoji: '🥘', top: '55%', left: '5%',  size: 26, delay: '0.5s', dur: '8s' },
-  { emoji: '🍛', top: '65%', right: '7%', size: 30, delay: '2s',   dur: '6s' },
-  { emoji: '🥗', top: '40%', left: '3%',  size: 24, delay: '1.8s', dur: '10s' },
-  { emoji: '🍞', top: '78%', right: '12%',size: 22, delay: '0.8s', dur: '7.5s' },
-];
-
 export default function Home() {
   const [scrolled, setScrolled] = useState(false);
   useReveal();
   useEffect(() => {
-    const h = () => setScrolled(window.scrollY > 50);
+    const h = () => setScrolled(window.scrollY > 60);
     window.addEventListener('scroll', h, { passive: true });
     return () => window.removeEventListener('scroll', h);
   }, []);
 
-  const kg    = useCounter(3241);
-  const trips = useCounter(847);
-  const meals = useCounter(9700);
-  const pts   = useCounter(12);
+  const meals  = useCounter(365000);
+  const trips  = useCounter(1240);
+  const donors = useCounter(380);
+  const pts    = useCounter(18);
 
   return (
     <>
       {/* ══ NAV ══════════════════════════════════════════════════ */}
       <nav style={{
         position: 'fixed', top: 0, left: 0, right: 0, zIndex: 100,
-        height: 68, padding: '0 40px',
+        height: 72, padding: '0 48px',
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
         transition: 'all 0.4s ease',
         ...(scrolled ? {
-          background: 'rgba(8,36,22,0.88)',
-          backdropFilter: 'blur(24px)',
-          WebkitBackdropFilter: 'blur(24px)',
-          borderBottom: '1px solid rgba(168,197,181,0.1)',
+          background: 'rgba(15,61,31,0.97)',
+          backdropFilter: 'blur(20px)',
+          WebkitBackdropFilter: 'blur(20px)',
+          boxShadow: '0 2px 24px rgba(0,0,0,0.2)',
         } : { background: 'transparent' }),
       }}>
-        {/* Logo */}
-        <Link href="/" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 11 }}>
-          <div style={{
-            width: 40, height: 40, borderRadius: 12, position: 'relative',
-            background: 'linear-gradient(145deg, #F59713 0%, #e07c10 100%)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            boxShadow: '0 4px 16px rgba(245,151,19,0.35)',
-            flexShrink: 0,
-          }}>
-            <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
-              <path d="M11 2C11 2 5 6 5 12C5 15.3 7.7 18 11 18C14.3 18 17 15.3 17 12C17 6 11 2 11 2Z" fill="white" opacity="0.95"/>
-              <path d="M11 18V21" stroke="white" strokeWidth="1.8" strokeLinecap="round"/>
-              <path d="M8 21H14" stroke="white" strokeWidth="1.8" strokeLinecap="round"/>
-            </svg>
-          </div>
-          <div>
-            <div style={{ color: '#fff', fontWeight: 800, fontSize: 15, letterSpacing: '-0.3px', lineHeight: 1.1 }}>Rajyash Foundation</div>
-            <div style={{ color: 'rgba(168,197,181,0.6)', fontSize: 10, letterSpacing: '0.8px', fontWeight: 500 }}>FOOD RESCUE · AHMEDABAD</div>
-          </div>
+        <Link href="/" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center' }}>
+          <Image src="/rajyash-logo.png" alt="Rajyash Foundation" width={180} height={56} style={{ objectFit: 'contain', filter: scrolled ? 'brightness(0) invert(1)' : 'brightness(0) invert(1)' }} priority />
         </Link>
 
-        <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-          <Link href="/track" style={{ color: 'rgba(255,255,255,0.7)', fontSize: 14, fontWeight: 500, textDecoration: 'none', padding: '8px 16px', borderRadius: 50, transition: 'all 0.2s' }}
-            onMouseEnter={e => { e.currentTarget.style.color='#fff'; e.currentTarget.style.background='rgba(255,255,255,0.07)'; }}
-            onMouseLeave={e => { e.currentTarget.style.color='rgba(255,255,255,0.7)'; e.currentTarget.style.background='transparent'; }}>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          <Link href="/track" style={{
+            color: 'rgba(255,255,255,0.8)', fontSize: 13, fontWeight: 500,
+            textDecoration: 'none', padding: '8px 18px', borderRadius: 4,
+            letterSpacing: '0.03em', transition: 'all 0.2s',
+          }}
+            onMouseEnter={e => { e.currentTarget.style.color='#fff'; e.currentTarget.style.background='rgba(255,255,255,0.08)'; }}
+            onMouseLeave={e => { e.currentTarget.style.color='rgba(255,255,255,0.8)'; e.currentTarget.style.background='transparent'; }}>
             Track Request
           </Link>
-          <Link href="/give" className="btn-saffron" style={{ padding: '9px 22px', fontSize: 13 }}>
-            Donate Food →
+          <Link href="/give" className="btn-gold" style={{ padding: '10px 24px', fontSize: 12, borderRadius: 4 }}>
+            Donate Food
           </Link>
         </div>
       </nav>
@@ -108,129 +87,146 @@ export default function Home() {
       {/* ══ HERO ══════════════════════════════════════════════════ */}
       <section className="grain" style={{
         minHeight: '100vh',
-        background: 'radial-gradient(ellipse 80% 60% at 50% 0%, #1a4731 0%, #0A2E1E 55%, #071a10 100%)',
+        background: 'linear-gradient(160deg, #0F3D1F 0%, #1B5E38 45%, #0F3D1F 100%)',
         display: 'flex', flexDirection: 'column',
         alignItems: 'center', justifyContent: 'center',
         textAlign: 'center', padding: '140px 24px 100px',
         position: 'relative', overflow: 'hidden',
       }}>
-        {/* Ambient blobs */}
-        <div style={{ position:'absolute', width:700, height:700, borderRadius:'50%', background:'radial-gradient(circle, rgba(245,151,19,0.07) 0%, transparent 65%)', top:'5%', left:'50%', transform:'translateX(-50%)', pointerEvents:'none', zIndex:1 }}/>
-        <div style={{ position:'absolute', width:320, height:320, borderRadius:'50%', background:'rgba(20,92,58,0.35)', bottom:'8%', right:'3%', filter:'blur(90px)', pointerEvents:'none', zIndex:1 }}/>
-        <div style={{ position:'absolute', width:240, height:240, borderRadius:'50%', background:'rgba(245,151,19,0.07)', top:'18%', left:'6%', filter:'blur(70px)', pointerEvents:'none', zIndex:1 }}/>
+        {/* Pattern overlay */}
+        <div style={{
+          position: 'absolute', inset: 0,
+          backgroundImage: 'radial-gradient(circle at 20% 80%, rgba(196,150,60,0.08) 0%, transparent 50%), radial-gradient(circle at 80% 20%, rgba(196,150,60,0.06) 0%, transparent 50%)',
+          pointerEvents: 'none', zIndex: 1,
+        }}/>
 
-        {/* Floating food particles */}
-        {FLOATERS.map((f, i) => (
+        {/* Floating food emojis */}
+        {[
+          { e:'🍱', t:'12%', l:'6%',  s:30, d:'0s',   du:'7s' },
+          { e:'🌾', t:'22%', r:'8%',  s:26, d:'1.4s', du:'9s' },
+          { e:'🥘', t:'58%', l:'4%',  s:24, d:'0.6s', du:'8s' },
+          { e:'🍛', t:'68%', r:'6%',  s:28, d:'2.1s', du:'6s' },
+          { e:'🥗', t:'38%', l:'2%',  s:22, d:'1.9s', du:'10s'},
+          { e:'🍞', t:'80%', r:'11%', s:20, d:'0.9s', du:'7.5s'},
+        ].map((f,i) => (
           <div key={i} style={{
-            position:'absolute', fontSize: f.size, opacity: 0.18,
-            top: f.top, left: f.left ?? undefined, right: (f as {right?:string}).right ?? undefined,
-            animation: `${i % 2 === 0 ? 'float' : 'float2'} ${f.dur} ease-in-out infinite`,
-            animationDelay: f.delay, pointerEvents:'none', zIndex:1, filter:'blur(0.5px)',
-            userSelect:'none',
-          }}>{f.emoji}</div>
+            position:'absolute', fontSize: f.s, opacity: 0.12,
+            top: f.t, left: f.l ?? undefined, right: (f as {r?:string}).r ?? undefined,
+            animation: `${i%2===0?'float':'float2'} ${f.du} ease-in-out infinite`,
+            animationDelay: f.d, pointerEvents:'none', zIndex:1, userSelect:'none',
+          }}>{f.e}</div>
         ))}
 
-        {/* Content */}
-        <div style={{ position:'relative', zIndex:2 }}>
-          {/* Badge */}
-          <div className="animate-fade-up" style={{
-            display:'inline-flex', alignItems:'center', gap:8,
-            background:'rgba(245,151,19,0.1)', border:'1px solid rgba(245,151,19,0.28)',
-            borderRadius:50, padding:'7px 18px', marginBottom:32,
-            backdropFilter:'blur(8px)',
-          }}>
-            <div style={{ width:7, height:7, borderRadius:'50%', background:'#F59713', boxShadow:'0 0 10px #F59713' }}/>
-            <span style={{ color:'#FDB944', fontSize:12, fontWeight:600, letterSpacing:'0.8px' }}>RESCUING FOOD · FEEDING FAMILIES</span>
+        <div style={{ position: 'relative', zIndex: 2, maxWidth: 820 }}>
+          {/* Logo */}
+          <div className="animate-fade-up" style={{ marginBottom: 36 }}>
+            <Image src="/rajyash-logo.png" alt="Rajyash Foundation" width={220} height={70} style={{ objectFit: 'contain', filter: 'brightness(0) invert(1)' }} priority />
           </div>
 
-          <h1 className="animate-fade-up delay-100" style={{
-            fontSize:'clamp(44px,7.5vw,92px)', fontWeight:900, color:'#fff',
-            lineHeight:1.04, letterSpacing:'-2.5px', marginBottom:8, maxWidth:820,
-          }}>Every meal saved</h1>
+          {/* Tag */}
+          <div className="animate-fade-up delay-100" style={{
+            display: 'inline-flex', alignItems: 'center', gap: 8,
+            border: '1px solid rgba(196,150,60,0.4)',
+            background: 'rgba(196,150,60,0.08)',
+            borderRadius: 2, padding: '6px 18px', marginBottom: 28,
+          }}>
+            <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#C4963C', boxShadow: '0 0 8px #C4963C' }}/>
+            <span style={{ color: '#D4A84B', fontSize: 11, fontWeight: 700, letterSpacing: '2px' }}>
+              WE RISE BY LIFTING OTHERS
+            </span>
+          </div>
 
           <h1 className="animate-fade-up delay-200" style={{
-            fontSize:'clamp(44px,7.5vw,92px)', fontWeight:900,
-            lineHeight:1.04, letterSpacing:'-2.5px', marginBottom:32,
+            fontSize: 'clamp(40px,6.5vw,84px)', fontWeight: 900,
+            color: '#fff', lineHeight: 1.06, letterSpacing: '-2px', marginBottom: 8,
           }}>
-            <span className="text-shimmer">is a life touched.</span>
+            Every meal saved
+          </h1>
+          <h1 className="animate-fade-up delay-300" style={{
+            fontSize: 'clamp(40px,6.5vw,84px)', fontWeight: 900,
+            lineHeight: 1.06, letterSpacing: '-2px', marginBottom: 32,
+          }}>
+            <span className="text-gold-shimmer">is a life touched.</span>
           </h1>
 
-          <p className="animate-fade-up delay-300" style={{
-            fontSize:'clamp(16px,2vw,20px)', color:'rgba(168,197,181,0.85)',
-            maxWidth:520, lineHeight:1.7, marginBottom:48, fontWeight:400,
+          <p className="animate-fade-up delay-400" style={{
+            fontSize: 'clamp(15px,1.8vw,19px)', color: 'rgba(255,255,255,0.65)',
+            maxWidth: 520, lineHeight: 1.75, marginBottom: 48, margin: '0 auto 48px',
           }}>
-            We connect hotels, restaurants &amp; caterers with surplus food to families who need it — same day, across Ahmedabad.
+            Rajyash Foundation connects hotels, restaurants &amp; event venues with surplus food to families who need it — same day, across Ahmedabad.
           </p>
 
-          <div className="animate-fade-up delay-400" style={{ display:'flex', gap:14, flexWrap:'wrap', justifyContent:'center' }}>
-            <Link href="/give" className="btn-saffron" style={{ fontSize:16, padding:'17px 40px' }}>
-              Donate Surplus Food →
+          <div className="animate-fade-up delay-500" style={{ display: 'flex', gap: 14, flexWrap: 'wrap', justifyContent: 'center' }}>
+            <Link href="/give" className="btn-gold" style={{ fontSize: 14, padding: '15px 40px' }}>
+              Donate Surplus Food
             </Link>
-            <Link href="/track" className="btn-ghost" style={{ fontSize:15, padding:'17px 34px' }}>
+            <Link href="/track" className="btn-outline" style={{ fontSize: 13, padding: '15px 32px' }}>
               Track a Request
             </Link>
           </div>
 
-          {/* Mini stats strip */}
+          {/* Stats strip */}
           <div className="animate-fade-up delay-600" style={{
-            display:'flex', gap:32, justifyContent:'center', marginTop:64,
-            flexWrap:'wrap',
+            display: 'flex', gap: 0, justifyContent: 'center', marginTop: 72,
+            borderTop: '1px solid rgba(196,150,60,0.2)', paddingTop: 36, flexWrap: 'wrap',
           }}>
-            {[['3,241+', 'kg rescued'], ['847+', 'trips done'], ['9,700+', 'meals served']].map(([n, l]) => (
-              <div key={l} style={{ textAlign:'center' }}>
-                <div style={{ fontSize:22, fontWeight:900, color:'#FDB944', letterSpacing:'-0.5px' }}>{n}</div>
-                <div style={{ fontSize:12, color:'rgba(168,197,181,0.5)', fontWeight:500, marginTop:3 }}>{l}</div>
+            {[['365,000+','People Helped'],['1,240+','Trips Completed'],['18','Drop Points'],['380+','Donors']].map(([n,l],i,arr) => (
+              <div key={l} style={{
+                textAlign: 'center', padding: '0 36px',
+                borderRight: i < arr.length-1 ? '1px solid rgba(196,150,60,0.2)' : 'none',
+              }}>
+                <div style={{ fontSize: 26, fontWeight: 900, color: '#D4A84B', letterSpacing: '-0.5px' }}>{n}</div>
+                <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.45)', marginTop: 4, letterSpacing: '0.05em' }}>{l}</div>
               </div>
             ))}
           </div>
         </div>
 
         {/* Scroll arrow */}
-        <div className="animate-bounce-arrow" style={{ position:'absolute', bottom:36, left:'50%', zIndex:2 }}>
+        <div className="animate-bounce-arrow" style={{ position: 'absolute', bottom: 32, left: '50%', zIndex: 2 }}>
           <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
-            <path d="M7 10l5 5 5-5" stroke="rgba(168,197,181,0.4)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+            <path d="M7 10l5 5 5-5" stroke="rgba(196,150,60,0.5)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
           </svg>
         </div>
       </section>
 
       {/* ══ IMPACT ════════════════════════════════════════════════ */}
-      <section style={{ background:'#0A2E1E', padding:'88px 24px' }}>
-        <div style={{ maxWidth:1040, margin:'0 auto' }}>
-          <p className="reveal" style={{ textAlign:'center', fontSize:11, fontWeight:700, letterSpacing:'2.5px', color:'#F59713', marginBottom:10, textTransform:'uppercase' }}>
-            Our Impact
-          </p>
-          <h2 className="reveal" style={{ textAlign:'center', fontSize:'clamp(28px,4vw,44px)', fontWeight:900, color:'#fff', marginBottom:60, letterSpacing:'-1.2px' }}>
-            Numbers that matter
-          </h2>
-          <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(220px, 1fr))', gap:16 }}>
+      <section style={{ background: '#fff', padding: '96px 24px' }}>
+        <div style={{ maxWidth: 1060, margin: '0 auto' }}>
+          <div style={{ textAlign: 'center', marginBottom: 64 }}>
+            <div className="reveal section-tag">Our Impact</div>
+            <h2 className="reveal" style={{ fontSize: 'clamp(28px,3.5vw,42px)', fontWeight: 900, color: '#0F3D1F', letterSpacing: '-1px', marginBottom: 16 }}>
+              Numbers that matter
+            </h2>
+            <div className="reveal gold-rule" style={{ margin: '0 auto' }}/>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px,1fr))', gap: 24 }}>
             {[
-              { refObj:kg,    num:'3,241', suffix:' kg',  label:'Food Rescued',       icon:'🌾', color:'#F59713' },
-              { refObj:trips, num:'847',   suffix:'',     label:'Trips Completed',    icon:'🚐', color:'#22c55e' },
-              { refObj:meals, num:'9,700', suffix:'+',    label:'Meals Served',       icon:'🍱', color:'#06b6d4' },
-              { refObj:pts,   num:'12',    suffix:'',     label:'Drop Points Active', icon:'📍', color:'#a78bfa' },
+              { refObj: meals,  num: '365,000', suffix: '+', label: 'People Helped',      icon: '🍱', sub: 'meals distributed' },
+              { refObj: trips,  num: '1,240',   suffix: '+', label: 'Trips Completed',    icon: '🚐', sub: 'successful pickups' },
+              { refObj: donors, num: '380',      suffix: '+', label: 'Food Donors',        icon: '🏨', sub: 'hotels & restaurants' },
+              { refObj: pts,    num: '18',       suffix: '',  label: 'Drop Points Active', icon: '📍', sub: 'across Ahmedabad' },
             ].map((s, i) => (
               <div key={i} className="reveal card-hover" ref={s.refObj.ref} style={{
-                textAlign:'center', padding:'40px 28px',
-                borderRadius:24,
-                background:'rgba(255,255,255,0.04)',
-                border:'1px solid rgba(255,255,255,0.08)',
-                backdropFilter:'blur(12px)',
-                position:'relative', overflow:'hidden',
+                background: i % 2 === 0 ? '#FDFBF7' : '#fff',
+                border: '1.5px solid #EDE8DB',
+                borderRadius: 8, padding: '36px 28px', textAlign: 'center',
+                position: 'relative', overflow: 'hidden',
               }}>
                 <div style={{
-                  position:'absolute', top:-30, right:-30, width:120, height:120,
-                  borderRadius:'50%', background:`radial-gradient(circle, ${s.color}18 0%, transparent 70%)`,
-                  pointerEvents:'none',
+                  position: 'absolute', top: 0, left: 0, right: 0, height: 3,
+                  background: 'linear-gradient(90deg, #C4963C, #D4A84B)',
                 }}/>
-                <div style={{ fontSize:40, marginBottom:14 }}>{s.icon}</div>
+                <div style={{ fontSize: 36, marginBottom: 14 }}>{s.icon}</div>
                 <div style={{
-                  fontSize:'clamp(38px,5vw,58px)', fontWeight:900,
-                  color:'#fff', lineHeight:1, letterSpacing:'-2px',
+                  fontSize: 'clamp(36px,4.5vw,54px)', fontWeight: 900,
+                  color: '#1B5E38', lineHeight: 1, letterSpacing: '-2px',
                 }}>
                   {s.refObj.count.toLocaleString('en-IN')}{s.suffix}
                 </div>
-                <div style={{ fontSize:13, color:'rgba(168,197,181,0.6)', fontWeight:500, marginTop:10 }}>{s.label}</div>
-                <div style={{ width:40, height:3, background:`linear-gradient(90deg, ${s.color}, transparent)`, borderRadius:2, margin:'14px auto 0' }}/>
+                <div style={{ fontSize: 15, color: '#0F3D1F', fontWeight: 700, marginTop: 10 }}>{s.label}</div>
+                <div style={{ fontSize: 12, color: '#7A9A7A', marginTop: 4 }}>{s.sub}</div>
               </div>
             ))}
           </div>
@@ -238,43 +234,37 @@ export default function Home() {
       </section>
 
       {/* ══ HOW IT WORKS ══════════════════════════════════════════ */}
-      <section style={{ background:'#fff', padding:'100px 24px' }}>
-        <div style={{ maxWidth:1000, margin:'0 auto' }}>
-          <p className="reveal" style={{ textAlign:'center', fontSize:11, fontWeight:700, letterSpacing:'2.5px', color:'#F59713', marginBottom:10, textTransform:'uppercase' }}>
-            How It Works
-          </p>
-          <h2 className="reveal" style={{ textAlign:'center', fontSize:'clamp(28px,4vw,44px)', fontWeight:900, color:'#0A2E1E', marginBottom:12, letterSpacing:'-1.2px' }}>
-            Three steps. One full plate.
-          </h2>
-          <p className="reveal" style={{ textAlign:'center', color:'#6B8A7A', fontSize:16, marginBottom:72, maxWidth:460, margin:'0 auto 72px' }}>
-            From your kitchen to a family&apos;s table, same day.
-          </p>
-          <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(280px, 1fr))', gap:24 }}>
+      <section style={{ background: '#F4EFE4', padding: '100px 24px' }}>
+        <div style={{ maxWidth: 1000, margin: '0 auto' }}>
+          <div style={{ textAlign: 'center', marginBottom: 72 }}>
+            <div className="reveal section-tag">How It Works</div>
+            <h2 className="reveal" style={{ fontSize: 'clamp(28px,3.5vw,42px)', fontWeight: 900, color: '#0F3D1F', letterSpacing: '-1px', marginBottom: 16 }}>
+              Three steps. One full plate.
+            </h2>
+            <div className="reveal gold-rule"/>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px,1fr))', gap: 24 }}>
             {[
-              { step:'01', icon:'📝', title:'Submit a Request', desc:'Fill a quick form — food type, how many it serves, pickup address, and when it\'s ready. 90 seconds.', accent:'#F59713' },
-              { step:'02', icon:'🧑‍✈️', title:'We Assign a Driver', desc:'Our admin reviews and dispatches the nearest available driver immediately. You get a live tracking ID.', accent:'#22c55e' },
-              { step:'03', icon:'🍱', title:'Food Reaches Families', desc:'Driver picks up, photographs, and delivers to a verified drop point. Trip closed with full proof.', accent:'#06b6d4' },
+              { step: '01', icon: '📝', title: 'Submit a Request', desc: 'Fill a quick form — food type, how many people it serves, pickup address, and when it\'s ready. Takes 90 seconds.', color: '#C4963C' },
+              { step: '02', icon: '🧑‍✈️', title: 'We Assign a Driver', desc: 'Our admin team reviews and dispatches the nearest available driver immediately. You get a live tracking ID.', color: '#1B5E38' },
+              { step: '03', icon: '🍱', title: 'Food Reaches Families', desc: 'Driver picks up and delivers to a verified drop point. Trip closed with full confirmation.', color: '#0F3D1F' },
             ].map((s, i) => (
               <div key={i} className="reveal card-hover" style={{
-                background:'#fff', borderRadius:24, padding:'40px 32px',
-                border:'1.5px solid #f0ebe5',
-                boxShadow:'0 4px 28px rgba(10,46,30,0.06)',
-                position:'relative', overflow:'hidden',
+                background: '#fff', borderRadius: 8, padding: '44px 36px',
+                border: '1.5px solid #EDE8DB',
+                boxShadow: '0 2px 16px rgba(15,61,31,0.06)',
+                position: 'relative',
               }}>
                 <div style={{
-                  position:'absolute', top:0, left:0, right:0, height:4,
-                  background:`linear-gradient(90deg, ${s.accent}, transparent)`, borderRadius:'24px 24px 0 0',
-                }}/>
-                <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:24 }}>
-                  <div style={{
-                    width:52, height:52, borderRadius:16,
-                    background:`${s.accent}15`, border:`1.5px solid ${s.accent}30`,
-                    display:'flex', alignItems:'center', justifyContent:'center', fontSize:24,
-                  }}>{s.icon}</div>
-                  <span style={{ fontSize:40, fontWeight:900, color:'rgba(10,46,30,0.07)', letterSpacing:'-2px' }}>{s.step}</span>
-                </div>
-                <h3 style={{ fontSize:20, fontWeight:800, color:'#0A2E1E', marginBottom:12, letterSpacing:'-0.3px' }}>{s.title}</h3>
-                <p style={{ fontSize:15, color:'#6B8A7A', lineHeight:1.7 }}>{s.desc}</p>
+                  width: 56, height: 56, borderRadius: 8,
+                  background: `${s.color}15`, border: `2px solid ${s.color}30`,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: 26, marginBottom: 24,
+                }}>{s.icon}</div>
+                <div style={{ fontSize: 11, fontWeight: 700, color: s.color, letterSpacing: '2px', marginBottom: 10 }}>STEP {s.step}</div>
+                <h3 style={{ fontSize: 20, fontWeight: 800, color: '#0F3D1F', marginBottom: 12, letterSpacing: '-0.3px' }}>{s.title}</h3>
+                <p style={{ fontSize: 14, color: '#4A6A4A', lineHeight: 1.75 }}>{s.desc}</p>
               </div>
             ))}
           </div>
@@ -282,39 +272,40 @@ export default function Home() {
       </section>
 
       {/* ══ WHO CAN DONATE ════════════════════════════════════════ */}
-      <section style={{ background:'#FDFAF6', padding:'100px 24px' }}>
-        <div style={{ maxWidth:1000, margin:'0 auto' }}>
-          <p className="reveal" style={{ textAlign:'center', fontSize:11, fontWeight:700, letterSpacing:'2.5px', color:'#F59713', marginBottom:10, textTransform:'uppercase' }}>
-            Who Can Donate
-          </p>
-          <h2 className="reveal" style={{ textAlign:'center', fontSize:'clamp(28px,4vw,44px)', fontWeight:900, color:'#0A2E1E', marginBottom:12, letterSpacing:'-1.2px' }}>
-            You already have what we need.
-          </h2>
-          <p className="reveal" style={{ textAlign:'center', color:'#6B8A7A', fontSize:16, marginBottom:64, maxWidth:400, margin:'0 auto 64px' }}>
-            No registration fees. No complex process. Just good food, put to good use.
-          </p>
-          <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(200px, 1fr))', gap:16 }}>
+      <section style={{ background: '#fff', padding: '100px 24px' }}>
+        <div style={{ maxWidth: 1000, margin: '0 auto' }}>
+          <div style={{ textAlign: 'center', marginBottom: 64 }}>
+            <div className="reveal section-tag">Who Can Donate</div>
+            <h2 className="reveal" style={{ fontSize: 'clamp(28px,3.5vw,42px)', fontWeight: 900, color: '#0F3D1F', letterSpacing: '-1px', marginBottom: 16 }}>
+              You already have what we need.
+            </h2>
+            <div className="reveal gold-rule"/>
+            <p className="reveal" style={{ color: '#7A9A7A', fontSize: 15, marginTop: 20, maxWidth: 420, margin: '20px auto 0' }}>
+              No registration fees. No complex process. Just good food, put to good use.
+            </p>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px,1fr))', gap: 20 }}>
             {[
-              { emoji:'🏨', type:'Hotels', desc:'Buffet surplus, banquet leftovers', color:'#F59713' },
-              { emoji:'🍽️', type:'Restaurants', desc:'End-of-day prepared food', color:'#22c55e' },
-              { emoji:'🎪', type:'Event Venues', desc:'Post-event catered food', color:'#06b6d4' },
-              { emoji:'🏫', type:'Canteens', desc:'School & office cafeterias', color:'#a78bfa' },
+              { emoji: '🏨', type: 'Hotels', desc: 'Buffet surplus, banquet leftovers' },
+              { emoji: '🍽️', type: 'Restaurants', desc: 'End-of-day prepared food' },
+              { emoji: '🎪', type: 'Event Venues', desc: 'Post-event catered food' },
+              { emoji: '🏫', type: 'Canteens', desc: 'School & office cafeterias' },
             ].map((item, i) => (
               <div key={i} className="reveal card-hover" style={{
-                borderRadius:20, padding:'36px 24px', textAlign:'center',
-                background:'#fff', cursor:'default',
-                border:'1.5px solid #f0ebe5',
-                position:'relative', overflow:'hidden',
+                borderRadius: 8, padding: '36px 24px', textAlign: 'center',
+                background: '#FDFBF7', border: '1.5px solid #EDE8DB', cursor: 'default',
+                transition: 'all 0.25s',
               }}
-              onMouseEnter={e => { (e.currentTarget as HTMLDivElement).style.borderColor = item.color; }}
-              onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.borderColor = '#f0ebe5'; }}>
+              onMouseEnter={e => { e.currentTarget.style.borderColor='#C4963C'; e.currentTarget.style.background='#FFF8EC'; }}
+              onMouseLeave={e => { e.currentTarget.style.borderColor='#EDE8DB'; e.currentTarget.style.background='#FDFBF7'; }}>
                 <div style={{
-                  width:64, height:64, borderRadius:20, margin:'0 auto 18px',
-                  background:`${item.color}12`, display:'flex', alignItems:'center', justifyContent:'center',
-                  fontSize:32,
+                  width: 68, height: 68, borderRadius: 12, margin: '0 auto 18px',
+                  background: 'rgba(196,150,60,0.1)', border: '1.5px solid rgba(196,150,60,0.2)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 32,
                 }}>{item.emoji}</div>
-                <div style={{ fontSize:16, fontWeight:800, color:'#0A2E1E', marginBottom:6 }}>{item.type}</div>
-                <div style={{ fontSize:13, color:'#6B8A7A', lineHeight:1.55 }}>{item.desc}</div>
+                <div style={{ fontSize: 16, fontWeight: 800, color: '#0F3D1F', marginBottom: 6 }}>{item.type}</div>
+                <div style={{ fontSize: 13, color: '#7A9A7A', lineHeight: 1.6 }}>{item.desc}</div>
               </div>
             ))}
           </div>
@@ -323,23 +314,24 @@ export default function Home() {
 
       {/* ══ CTA BAND ══════════════════════════════════════════════ */}
       <section className="grain" style={{
-        background:'radial-gradient(ellipse 70% 80% at 50% 50%, #1a4731 0%, #0A2E1E 100%)',
-        padding:'100px 24px', textAlign:'center',
-        position:'relative',
+        background: 'linear-gradient(135deg, #0F3D1F 0%, #1B5E38 50%, #0F3D1F 100%)',
+        padding: '100px 24px', textAlign: 'center', position: 'relative',
       }}>
-        <div style={{ position:'absolute', width:600, height:600, borderRadius:'50%', background:'radial-gradient(circle, rgba(245,151,19,0.08) 0%, transparent 65%)', top:'50%', left:'50%', transform:'translate(-50%,-50%)', pointerEvents:'none', zIndex:1 }}/>
-        <div style={{ position:'relative', zIndex:2 }}>
-          <h2 className="reveal" style={{ fontSize:'clamp(30px,5vw,54px)', fontWeight:900, color:'#fff', letterSpacing:'-1.5px', marginBottom:18, lineHeight:1.1 }}>
+        <div style={{ position: 'absolute', inset: 0, backgroundImage: 'radial-gradient(circle at 50% 50%, rgba(196,150,60,0.1) 0%, transparent 60%)', pointerEvents: 'none', zIndex: 1 }}/>
+        <div style={{ position: 'relative', zIndex: 2, maxWidth: 640, margin: '0 auto' }}>
+          <div className="reveal section-tag">Join Us</div>
+          <h2 className="reveal" style={{ fontSize: 'clamp(28px,4.5vw,52px)', fontWeight: 900, color: '#fff', letterSpacing: '-1.5px', marginBottom: 18, lineHeight: 1.1 }}>
             Ready to make a difference?
           </h2>
-          <p className="reveal" style={{ color:'rgba(168,197,181,0.75)', fontSize:18, marginBottom:44, maxWidth:440, margin:'0 auto 44px' }}>
-            It takes less than 2 minutes to submit a pickup request.
+          <div className="reveal gold-rule" style={{ margin: '0 auto 28px' }}/>
+          <p className="reveal" style={{ color: 'rgba(255,255,255,0.6)', fontSize: 16, marginBottom: 44, lineHeight: 1.7 }}>
+            It takes less than 2 minutes to submit a food pickup request.<br />Your surplus meal can be someone&apos;s only meal today.
           </p>
-          <div className="reveal" style={{ display:'flex', gap:14, justifyContent:'center', flexWrap:'wrap' }}>
-            <Link href="/give" className="btn-saffron" style={{ fontSize:16, padding:'18px 44px' }}>
-              Donate Surplus Food →
+          <div className="reveal" style={{ display: 'flex', gap: 14, justifyContent: 'center', flexWrap: 'wrap' }}>
+            <Link href="/give" className="btn-gold" style={{ fontSize: 14, padding: '16px 44px' }}>
+              Donate Surplus Food
             </Link>
-            <Link href="/track" className="btn-ghost" style={{ fontSize:15, padding:'18px 36px' }}>
+            <Link href="/track" className="btn-outline" style={{ fontSize: 13, padding: '16px 36px' }}>
               Track a Request
             </Link>
           </div>
@@ -347,61 +339,54 @@ export default function Home() {
       </section>
 
       {/* ══ FOOTER ════════════════════════════════════════════════ */}
-      <footer style={{ background:'#071A10', padding:'56px 40px 32px', color:'#A8C5B5' }}>
-        <div style={{ maxWidth:1040, margin:'0 auto' }}>
-          <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', flexWrap:'wrap', gap:40, marginBottom:48 }}>
+      <footer style={{ background: '#0A2910', padding: '60px 48px 32px' }}>
+        <div style={{ maxWidth: 1060, margin: '0 auto' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 48, marginBottom: 56 }}>
             {/* Brand */}
-            <div style={{ maxWidth:280 }}>
-              <div style={{ display:'flex', alignItems:'center', gap:11, marginBottom:14 }}>
-                <div style={{ width:36, height:36, borderRadius:10, background:'linear-gradient(145deg,#F59713,#e07c10)', display:'flex', alignItems:'center', justifyContent:'center' }}>
-                  <svg width="20" height="20" viewBox="0 0 22 22" fill="none">
-                    <path d="M11 2C11 2 5 6 5 12C5 15.3 7.7 18 11 18C14.3 18 17 15.3 17 12C17 6 11 2 11 2Z" fill="white" opacity="0.95"/>
-                    <path d="M11 18V21" stroke="white" strokeWidth="1.8" strokeLinecap="round"/>
-                    <path d="M8 21H14" stroke="white" strokeWidth="1.8" strokeLinecap="round"/>
-                  </svg>
-                </div>
-                <div>
-                  <div style={{ color:'#fff', fontWeight:700, fontSize:15, lineHeight:1.1 }}>Rajyash Foundation</div>
-                  <div style={{ color:'rgba(168,197,181,0.4)', fontSize:10, letterSpacing:'0.8px' }}>FOOD RESCUE · AHMEDABAD</div>
-                </div>
-              </div>
-              <p style={{ fontSize:13, lineHeight:1.7, color:'#4A6B5A' }}>
-                Rescuing surplus food and feeding families in need across Ahmedabad since 2024.
+            <div style={{ maxWidth: 280 }}>
+              <Image src="/rajyash-logo.png" alt="Rajyash Foundation" width={160} height={50} style={{ objectFit: 'contain', filter: 'brightness(0) invert(1)', marginBottom: 16, opacity: 0.9 }} />
+              <p style={{ fontSize: 13, lineHeight: 1.8, color: 'rgba(255,255,255,0.35)' }}>
+                Rescuing surplus food and feeding families in need across Ahmedabad. We rise by lifting others.
               </p>
+              <div style={{ marginTop: 20, display: 'flex', gap: 3 }}>
+                <div style={{ width: 28, height: 2, background: '#C4963C', borderRadius: 2 }}/>
+                <div style={{ width: 10, height: 2, background: 'rgba(196,150,60,0.4)', borderRadius: 2 }}/>
+              </div>
             </div>
 
             {/* Links */}
-            <div style={{ display:'flex', gap:56, flexWrap:'wrap' }}>
+            <div style={{ display: 'flex', gap: 56, flexWrap: 'wrap' }}>
               <div>
-                <div style={{ fontSize:10, fontWeight:700, letterSpacing:'2px', color:'#3A5C4A', marginBottom:16, textTransform:'uppercase' }}>Donate</div>
-                {[['Submit Request', '/give'], ['Track Status', '/track']].map(([l,h]) => (
-                  <div key={l} style={{ marginBottom:10 }}>
-                    <Link href={h} style={{ color:'#6B8A7A', fontSize:14, textDecoration:'none', transition:'color 0.2s' }}
-                      onMouseEnter={e => (e.currentTarget.style.color='#F59713')}
-                      onMouseLeave={e => (e.currentTarget.style.color='#6B8A7A')}>{l}</Link>
+                <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '2px', color: '#C4963C', marginBottom: 18, textTransform: 'uppercase' }}>Donate</div>
+                {[['Submit Request', '/give'], ['Track Status', '/track']].map(([l, h]) => (
+                  <div key={l} style={{ marginBottom: 12 }}>
+                    <Link href={h} style={{ color: 'rgba(255,255,255,0.4)', fontSize: 13, textDecoration: 'none', transition: 'color 0.2s' }}
+                      onMouseEnter={e => (e.currentTarget.style.color = '#C4963C')}
+                      onMouseLeave={e => (e.currentTarget.style.color = 'rgba(255,255,255,0.4)')}>{l}</Link>
                   </div>
                 ))}
               </div>
               <div>
-                <div style={{ fontSize:10, fontWeight:700, letterSpacing:'2px', color:'#3A5C4A', marginBottom:16, textTransform:'uppercase' }}>Portals</div>
-                {[['Admin Panel', '/admin'], ['Driver Portal', '/driver']].map(([l,h]) => (
-                  <div key={l} style={{ marginBottom:10 }}>
-                    <Link href={h} style={{ color:'#6B8A7A', fontSize:14, textDecoration:'none', transition:'color 0.2s' }}
-                      onMouseEnter={e => (e.currentTarget.style.color='#F59713')}
-                      onMouseLeave={e => (e.currentTarget.style.color='#6B8A7A')}>{l}</Link>
+                <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '2px', color: '#C4963C', marginBottom: 18, textTransform: 'uppercase' }}>Portals</div>
+                {[['Admin Panel', '/admin'], ['Driver Portal', '/driver']].map(([l, h]) => (
+                  <div key={l} style={{ marginBottom: 12 }}>
+                    <Link href={h} style={{ color: 'rgba(255,255,255,0.4)', fontSize: 13, textDecoration: 'none', transition: 'color 0.2s' }}
+                      onMouseEnter={e => (e.currentTarget.style.color = '#C4963C')}
+                      onMouseLeave={e => (e.currentTarget.style.color = 'rgba(255,255,255,0.4)')}>{l}</Link>
                   </div>
                 ))}
               </div>
               <div>
-                <div style={{ fontSize:10, fontWeight:700, letterSpacing:'2px', color:'#3A5C4A', marginBottom:16, textTransform:'uppercase' }}>Contact</div>
-                <div style={{ fontSize:13, color:'#4A6B5A', marginBottom:8 }}>Ahmedabad, Gujarat</div>
-                <div style={{ fontSize:13, color:'#4A6B5A' }}>info@rajyashfoundation.org</div>
+                <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '2px', color: '#C4963C', marginBottom: 18, textTransform: 'uppercase' }}>Contact</div>
+                <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.35)', marginBottom: 8 }}>Ahmedabad, Gujarat</div>
+                <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.35)' }}>info@rajyashfoundation.org</div>
               </div>
             </div>
           </div>
-          <div style={{ borderTop:'1px solid rgba(255,255,255,0.05)', paddingTop:24, display:'flex', justifyContent:'space-between', alignItems:'center', flexWrap:'wrap', gap:12 }}>
-            <span style={{ fontSize:12, color:'#2A4A3A' }}>© 2026 Rajyash Foundation. All rights reserved.</span>
-            <span style={{ fontSize:12, color:'#2A4A3A' }}>Built with purpose 🌱</span>
+
+          <div style={{ borderTop: '1px solid rgba(255,255,255,0.06)', paddingTop: 28, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
+            <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.2)' }}>© 2026 Rajyash Foundation. All rights reserved.</span>
+            <span style={{ fontSize: 12, color: 'rgba(196,150,60,0.4)', fontStyle: 'italic' }}>We Rise by Lifting Others 🌱</span>
           </div>
         </div>
       </footer>
