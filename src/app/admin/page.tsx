@@ -1,7 +1,9 @@
 'use client';
 import { useState, useEffect, useCallback } from 'react';
+import Image from 'next/image';
 
 const API = 'https://slipms.com/rajyash-api';
+const UPLOADS = 'https://slipms.com/rajyash-api/';
 
 type Request = {
   id: number;
@@ -14,6 +16,7 @@ type Request = {
   status: string;
   created_at: string;
   requester_name: string;
+  photo_path?: string; // comma-separated relative paths
 };
 type Driver = { id: number; name: string; phone: string; vehicle_type: string; vehicle_number: string; };
 
@@ -63,6 +66,8 @@ export default function AdminPage() {
   const [statusModal, setStatusMod] = useState<Request|null>(null);
   const [newStatus, setNewStatus]   = useState('');
   const [updating, setUpdating]     = useState(false);
+  const [lightbox, setLightbox]     = useState<string|null>(null);
+  const [detailModal, setDetail]    = useState<Request|null>(null);
 
   useEffect(() => {
     const t = sessionStorage.getItem('rj_admin_token');
@@ -126,67 +131,102 @@ export default function AdminPage() {
 
   // ── LOGIN ────────────────────────────────────────────────────────
   if (!token) return (
-    <div style={{ minHeight:'100vh', fontFamily:'Inter,system-ui,sans-serif',
-      background:'linear-gradient(135deg,#0A2E1E 0%,#145C3A 60%,#0d3a25 100%)',
-      display:'flex', alignItems:'center', justifyContent:'center', padding:24 }}>
+    <div style={{ minHeight:'100vh', fontFamily:'Inter,system-ui,sans-serif', display:'flex' }}>
 
-      {/* Decorative blobs */}
-      <div style={{ position:'fixed', top:-100, right:-100, width:400, height:400, borderRadius:'50%', background:'radial-gradient(circle,rgba(245,151,19,0.12),transparent 70%)', pointerEvents:'none' }}/>
-      <div style={{ position:'fixed', bottom:-80, left:-80, width:320, height:320, borderRadius:'50%', background:'radial-gradient(circle,rgba(34,197,94,0.08),transparent 70%)', pointerEvents:'none' }}/>
+      {/* LEFT PANEL */}
+      <div style={{
+        flex:'0 0 46%', background:'linear-gradient(160deg,#0F3D1F 0%,#1B5E38 60%,#0F3D1F 100%)',
+        display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center',
+        padding:'60px 48px', position:'relative', overflow:'hidden',
+      }}>
+        {/* Decorative radial */}
+        <div style={{ position:'absolute', top:-80, right:-80, width:360, height:360, borderRadius:'50%', background:'radial-gradient(circle,rgba(196,150,60,0.12),transparent 70%)', pointerEvents:'none' }}/>
+        <div style={{ position:'absolute', bottom:-60, left:-60, width:280, height:280, borderRadius:'50%', background:'radial-gradient(circle,rgba(196,150,60,0.07),transparent 70%)', pointerEvents:'none' }}/>
+        {/* Subtle pattern dots */}
+        <div style={{ position:'absolute', inset:0, backgroundImage:'radial-gradient(rgba(255,255,255,0.04) 1px, transparent 1px)', backgroundSize:'28px 28px', pointerEvents:'none' }}/>
 
-      <div style={{ width:'100%', maxWidth:420, position:'relative' }}>
-        {/* Card */}
-        <div style={{ background:'rgba(255,255,255,0.97)', borderRadius:24, padding:'48px 40px', boxShadow:'0 40px 100px rgba(0,0,0,0.35)' }}>
-          {/* Logo */}
-          <div style={{ textAlign:'center', marginBottom:36 }}>
-            <div style={{ width:64, height:64, borderRadius:20, margin:'0 auto 18px', display:'flex', alignItems:'center', justifyContent:'center',
-              background:'linear-gradient(145deg,#0A2E1E,#145C3A)', boxShadow:'0 8px 24px rgba(10,46,30,0.35)' }}>
-              <svg width="28" height="28" viewBox="0 0 22 22" fill="none">
-                <path d="M11 2C11 2 5 6 5 12C5 15.3 7.7 18 11 18C14.3 18 17 15.3 17 12C17 6 11 2 11 2Z" fill="white"/>
-                <path d="M11 18V21M8 21H14" stroke="white" strokeWidth="1.8" strokeLinecap="round"/>
-              </svg>
-            </div>
-            <div style={{ fontSize:22, fontWeight:800, color:'#0A2E1E', letterSpacing:'-0.5px' }}>Admin Portal</div>
-            <div style={{ fontSize:13, color:'#94a3b8', marginTop:4 }}>Rajyash Foundation</div>
+        <div style={{ position:'relative', textAlign:'center', zIndex:1 }}>
+          <Image src="/rajyash-logo.png" alt="Rajyash Foundation" width={200} height={64} style={{ objectFit:'contain', filter:'brightness(0) invert(1)', marginBottom:40 }} priority />
+
+          <div style={{ width:48, height:2, background:'linear-gradient(90deg,transparent,#C4963C,transparent)', margin:'0 auto 32px' }}/>
+
+          <h2 style={{ color:'#fff', fontSize:28, fontWeight:800, letterSpacing:'-0.5px', lineHeight:1.2, marginBottom:12 }}>
+            Admin Portal
+          </h2>
+          <p style={{ color:'rgba(255,255,255,0.45)', fontSize:14, lineHeight:1.7, maxWidth:260 }}>
+            Manage food rescue requests, assign drivers, and track deliveries across Ahmedabad.
+          </p>
+
+          <div style={{ marginTop:48, display:'flex', flexDirection:'column', gap:14 }}>
+            {[['📋','Manage Requests'],['🚗','Assign Drivers'],['📊','Track Deliveries']].map(([icon,text]) => (
+              <div key={text} style={{ display:'flex', alignItems:'center', gap:12 }}>
+                <div style={{ width:36, height:36, borderRadius:10, background:'rgba(196,150,60,0.15)', border:'1px solid rgba(196,150,60,0.25)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:16, flexShrink:0 }}>{icon}</div>
+                <span style={{ color:'rgba(255,255,255,0.6)', fontSize:13 }}>{text}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div style={{ position:'absolute', bottom:28, color:'rgba(255,255,255,0.2)', fontSize:11, letterSpacing:'1px' }}>
+          WE RISE BY LIFTING OTHERS
+        </div>
+      </div>
+
+      {/* RIGHT PANEL */}
+      <div style={{
+        flex:1, background:'#FDFBF7', display:'flex', alignItems:'center', justifyContent:'center', padding:'48px 40px',
+      }}>
+        <div style={{ width:'100%', maxWidth:400 }}>
+          <div style={{ marginBottom:40 }}>
+            <div style={{ width:4, height:40, background:'linear-gradient(180deg,#C4963C,#1B5E38)', borderRadius:2, marginBottom:20 }}/>
+            <h1 style={{ fontSize:28, fontWeight:800, color:'#0F3D1F', letterSpacing:'-0.5px', marginBottom:6 }}>Welcome back</h1>
+            <p style={{ color:'#7A9A7A', fontSize:14 }}>Sign in to your admin account to continue</p>
           </div>
 
           <form onSubmit={doLogin}>
-            {['Phone Number','Password'].map((label, i) => (
-              <div key={label} style={{ marginBottom: i===0 ? 14 : 22 }}>
-                <label style={{ display:'block', fontSize:12, fontWeight:600, color:'#64748b', letterSpacing:'0.03em', textTransform:'uppercase', marginBottom:7 }}>{label}</label>
-                <input
-                  type={i===0?'tel':'password'} required
-                  value={i===0?phone:password}
-                  onChange={e => i===0?setPhone(e.target.value):setPassword(e.target.value)}
-                  placeholder={i===0?'10-digit number':'••••••••'}
-                  style={inp}
-                  onFocus={e=>{e.target.style.borderColor='#0A2E1E';e.target.style.boxShadow='0 0 0 3px rgba(10,46,30,0.1)';}}
-                  onBlur={e=>{e.target.style.borderColor='#e2e8f0';e.target.style.boxShadow='none';}}
-                />
-              </div>
-            ))}
+            <div style={{ marginBottom:18 }}>
+              <label style={{ display:'block', fontSize:11, fontWeight:700, color:'#4A6A4A', letterSpacing:'1.5px', textTransform:'uppercase', marginBottom:8 }}>Phone Number</label>
+              <input
+                type="tel" required value={phone} onChange={e=>setPhone(e.target.value)}
+                placeholder="Enter your mobile number"
+                style={{ width:'100%', padding:'13px 16px', border:'1.5px solid #DDE8D8', borderRadius:8, fontSize:14, fontFamily:'inherit', color:'#0F3D1F', background:'#fff', outline:'none', boxSizing:'border-box', transition:'border-color 0.2s, box-shadow 0.2s' }}
+                onFocus={e=>{e.target.style.borderColor='#1B5E38';e.target.style.boxShadow='0 0 0 3px rgba(27,94,56,0.1)';}}
+                onBlur={e=>{e.target.style.borderColor='#DDE8D8';e.target.style.boxShadow='none';}}
+              />
+            </div>
+            <div style={{ marginBottom:28 }}>
+              <label style={{ display:'block', fontSize:11, fontWeight:700, color:'#4A6A4A', letterSpacing:'1.5px', textTransform:'uppercase', marginBottom:8 }}>Password</label>
+              <input
+                type="password" required value={password} onChange={e=>setPassword(e.target.value)}
+                placeholder="Enter your password"
+                style={{ width:'100%', padding:'13px 16px', border:'1.5px solid #DDE8D8', borderRadius:8, fontSize:14, fontFamily:'inherit', color:'#0F3D1F', background:'#fff', outline:'none', boxSizing:'border-box', transition:'border-color 0.2s, box-shadow 0.2s' }}
+                onFocus={e=>{e.target.style.borderColor='#1B5E38';e.target.style.boxShadow='0 0 0 3px rgba(27,94,56,0.1)';}}
+                onBlur={e=>{e.target.style.borderColor='#DDE8D8';e.target.style.boxShadow='none';}}
+              />
+            </div>
 
             {loginErr && (
-              <div style={{ background:'#fef2f2', border:'1px solid #fecaca', borderRadius:10, padding:'10px 14px', color:'#dc2626', fontSize:13, fontWeight:500, marginBottom:16 }}>
-                {loginErr}
+              <div style={{ background:'#fef2f2', border:'1px solid #fecaca', borderRadius:8, padding:'11px 14px', color:'#dc2626', fontSize:13, marginBottom:20, display:'flex', alignItems:'center', gap:8 }}>
+                <span>⚠️</span> {loginErr}
               </div>
             )}
 
             <button type="submit" disabled={logging} style={{
-              width:'100%', padding:'14px', borderRadius:12, border:'none',
-              background:'linear-gradient(135deg,#0A2E1E,#145C3A)',
-              color:'#fff', fontWeight:700, fontSize:15, cursor:'pointer',
-              boxShadow:'0 4px 20px rgba(10,46,30,0.3)',
-              opacity:logging?0.7:1, transition:'opacity 0.2s, transform 0.2s',
+              width:'100%', padding:'14px', borderRadius:8, border:'none',
+              background:'linear-gradient(135deg,#1B5E38,#266B44)',
+              color:'#fff', fontWeight:700, fontSize:14, letterSpacing:'0.03em',
+              cursor:logging?'not-allowed':'pointer',
+              boxShadow:'0 4px 20px rgba(27,94,56,0.28)',
+              opacity:logging?0.7:1, transition:'all 0.2s',
             }}
-            onMouseEnter={e=>{if(!logging)(e.currentTarget.style.transform='translateY(-1px)');}}
-            onMouseLeave={e=>{e.currentTarget.style.transform='translateY(0)';}}
-            >{logging?'Signing in…':'Sign In'}</button>
+            onMouseEnter={e=>{if(!logging){e.currentTarget.style.transform='translateY(-1px)';e.currentTarget.style.boxShadow='0 8px 28px rgba(27,94,56,0.35)';}}}
+            onMouseLeave={e=>{e.currentTarget.style.transform='translateY(0)';e.currentTarget.style.boxShadow='0 4px 20px rgba(27,94,56,0.28)';}}
+            >{logging?'Signing in…':'Sign In to Admin'}</button>
           </form>
-        </div>
 
-        <div style={{ textAlign:'center', marginTop:20, color:'rgba(255,255,255,0.3)', fontSize:12 }}>
-          Rajyash Foundation · Secure Admin Access
+          <div style={{ marginTop:32, paddingTop:24, borderTop:'1px solid #EDE8DB', textAlign:'center', color:'#B0C4B0', fontSize:12 }}>
+            Rajyash Foundation · Secure Admin Access
+          </div>
         </div>
       </div>
     </div>
@@ -212,15 +252,11 @@ export default function AdminPage() {
         position:'sticky', top:0, zIndex:100,
         boxShadow:'0 1px 3px rgba(0,0,0,0.06)',
       }}>
-        <div style={{ display:'flex', alignItems:'center', gap:12 }}>
-          <div style={{ width:36, height:36, borderRadius:10, background:'linear-gradient(145deg,#0A2E1E,#145C3A)', display:'flex', alignItems:'center', justifyContent:'center' }}>
-            <svg width="18" height="18" viewBox="0 0 22 22" fill="none">
-              <path d="M11 2C11 2 5 6 5 12C5 15.3 7.7 18 11 18C14.3 18 17 15.3 17 12C17 6 11 2 11 2Z" fill="white"/>
-              <path d="M11 18V21M8 21H14" stroke="white" strokeWidth="1.8" strokeLinecap="round"/>
-            </svg>
-          </div>
+        <div style={{ display:'flex', alignItems:'center', gap:14 }}>
+          <Image src="/rajyash-logo.png" alt="Rajyash Foundation" width={130} height={44} style={{ objectFit:'contain' }} priority />
+          <div style={{ width:1, height:28, background:'#e2e8f0' }}/>
           <div>
-            <div style={{ fontWeight:700, color:'#0f172a', fontSize:15, lineHeight:1.1 }}>Rajyash Admin</div>
+            <div style={{ fontWeight:700, color:'#0f172a', fontSize:14, lineHeight:1.1 }}>Admin Portal</div>
             <div style={{ fontSize:11, color:'#94a3b8' }}>Food Rescue Dashboard</div>
           </div>
         </div>
@@ -324,25 +360,45 @@ export default function AdminPage() {
             {requests.map(req => {
               const sc = S_COLOR[req.status] || { bg:'#f9fafb', text:'#374151', dot:'#9ca3af' };
               const lc = S_LEFT[req.status] || '#e2e8f0';
+              const thumbs = req.photo_path ? req.photo_path.split(',').map(p => UPLOADS + p) : [];
               return (
                 <div key={req.id} style={{
-                  background:'#fff', borderRadius:14,
+                  background:'#fff', borderRadius:16,
                   border:'1px solid #f1f5f9',
                   borderLeft:`4px solid ${lc}`,
-                  padding:'18px 20px 18px 22px',
-                  display:'flex', alignItems:'center', gap:18, flexWrap:'wrap',
-                  boxShadow:'0 1px 3px rgba(0,0,0,0.05)',
+                  padding:'16px 18px 16px 20px',
+                  display:'flex', alignItems:'center', gap:16, flexWrap:'wrap',
+                  boxShadow:'0 1px 4px rgba(0,0,0,0.05)',
                   transition:'box-shadow 0.2s, transform 0.2s',
+                  cursor:'pointer',
                 }}
-                onMouseEnter={e=>{e.currentTarget.style.boxShadow='0 4px 16px rgba(0,0,0,0.09)';e.currentTarget.style.transform='translateY(-1px)';}}
-                onMouseLeave={e=>{e.currentTarget.style.boxShadow='0 1px 3px rgba(0,0,0,0.05)';e.currentTarget.style.transform='translateY(0)';}}>
+                onClick={()=>setDetail(req)}
+                onMouseEnter={e=>{e.currentTarget.style.boxShadow='0 6px 20px rgba(0,0,0,0.1)';e.currentTarget.style.transform='translateY(-1px)';}}
+                onMouseLeave={e=>{e.currentTarget.style.boxShadow='0 1px 4px rgba(0,0,0,0.05)';e.currentTarget.style.transform='translateY(0)';}}>
 
-                  {/* ID */}
-                  <div style={{ minWidth:88 }}>
+                  {/* Photo thumbnails */}
+                  {thumbs.length > 0 && (
+                    <div style={{ display:'flex', gap:4, flexShrink:0 }}>
+                      {thumbs.slice(0,2).map((url,i) => (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img key={i} src={url} alt="" onClick={e=>{e.stopPropagation();setLightbox(url);}}
+                          style={{ width:52, height:52, borderRadius:10, objectFit:'cover', border:'2px solid #f0f4f8', cursor:'zoom-in', flexShrink:0 }}
+                        />
+                      ))}
+                      {thumbs.length > 2 && (
+                        <div style={{ width:52, height:52, borderRadius:10, background:'#f1f5f9', display:'flex', alignItems:'center', justifyContent:'center', fontSize:12, color:'#64748b', fontWeight:700, flexShrink:0 }}>
+                          +{thumbs.length-2}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* ID + status */}
+                  <div style={{ minWidth:92 }}>
                     <div style={{ fontWeight:800, color:'#0f172a', fontSize:14, letterSpacing:'-0.3px' }}>
                       RJ-{String(req.id).padStart(5,'0')}
                     </div>
-                    <div style={{ marginTop:6, display:'inline-flex', alignItems:'center', gap:5, padding:'3px 9px', borderRadius:20, background:sc.bg }}>
+                    <div style={{ marginTop:5, display:'inline-flex', alignItems:'center', gap:5, padding:'3px 9px', borderRadius:20, background:sc.bg }}>
                       <div style={{ width:5, height:5, borderRadius:'50%', background:sc.dot, boxShadow:`0 0 4px ${sc.dot}` }}/>
                       <span style={{ fontSize:11, fontWeight:700, color:sc.text }}>{S_LABEL[req.status]||req.status}</span>
                     </div>
@@ -350,7 +406,7 @@ export default function AdminPage() {
 
                   {/* Donor avatar + info */}
                   <div style={{ display:'flex', alignItems:'center', gap:12, flex:1, minWidth:200 }}>
-                    <div style={{ width:40, height:40, borderRadius:12, background:`${lc}18`, border:`1.5px solid ${lc}30`, display:'flex', alignItems:'center', justifyContent:'center', fontSize:16, fontWeight:700, color:lc, flexShrink:0 }}>
+                    <div style={{ width:40, height:40, borderRadius:12, background:`${lc}18`, border:`1.5px solid ${lc}30`, display:'flex', alignItems:'center', justifyContent:'center', fontSize:16, fontWeight:800, color:lc, flexShrink:0 }}>
                       {req.donor_name.charAt(0).toUpperCase()}
                     </div>
                     <div>
@@ -376,8 +432,8 @@ export default function AdminPage() {
                   </div>
 
                   {/* Actions */}
-                  <div style={{ display:'flex', gap:8 }}>
-                    <button onClick={()=>{setStatusMod(req);setNewStatus(req.status);}} style={{
+                  <div style={{ display:'flex', gap:8 }} onClick={e=>e.stopPropagation()}>
+                    <button onClick={e=>{e.stopPropagation();setStatusMod(req);setNewStatus(req.status);}} style={{
                       padding:'7px 14px', borderRadius:8, border:'1.5px solid #e2e8f0',
                       background:'#fff', color:'#64748b', fontSize:12, cursor:'pointer', fontWeight:500,
                       transition:'all 0.15s',
@@ -387,15 +443,15 @@ export default function AdminPage() {
                       Edit Status
                     </button>
                     {['requested','under_review','assigned'].includes(req.status) && (
-                      <button onClick={()=>{setAssign(req);setAssignDrv('');}} style={{
-                        padding:'7px 16px', borderRadius:8, border:'1.5px solid #F59713',
-                        background:'linear-gradient(135deg,#fff9ec,#fffdf5)', color:'#b45309',
+                      <button onClick={e=>{e.stopPropagation();setAssign(req);setAssignDrv('');}} style={{
+                        padding:'7px 16px', borderRadius:8, border:'1.5px solid #C4963C',
+                        background:'linear-gradient(135deg,#fffbf2,#fff8e8)', color:'#92400e',
                         fontSize:12, cursor:'pointer', fontWeight:700,
                         transition:'all 0.15s', display:'flex', alignItems:'center', gap:5,
-                        boxShadow:'0 1px 4px rgba(245,151,19,0.15)',
+                        boxShadow:'0 1px 4px rgba(196,150,60,0.15)',
                       }}
-                      onMouseEnter={e=>{e.currentTarget.style.background='linear-gradient(135deg,#F59713,#FDB944)';e.currentTarget.style.color='#fff';}}
-                      onMouseLeave={e=>{e.currentTarget.style.background='linear-gradient(135deg,#fff9ec,#fffdf5)';e.currentTarget.style.color='#b45309';}}>
+                      onMouseEnter={e=>{e.currentTarget.style.background='linear-gradient(135deg,#C4963C,#D4A84B)';e.currentTarget.style.color='#fff';e.currentTarget.style.borderColor='#C4963C';}}
+                      onMouseLeave={e=>{e.currentTarget.style.background='linear-gradient(135deg,#fffbf2,#fff8e8)';e.currentTarget.style.color='#92400e';e.currentTarget.style.borderColor='#C4963C';}}>
                         🚗 Assign Driver
                       </button>
                     )}
@@ -505,6 +561,107 @@ export default function AdminPage() {
           </div>
         </div>
       )}
+
+      {/* ── DETAIL MODAL ── */}
+      {detailModal && (() => {
+        const req = detailModal;
+        const sc = S_COLOR[req.status] || { bg:'#f9fafb', text:'#374151', dot:'#9ca3af' };
+        const lc = S_LEFT[req.status] || '#e2e8f0';
+        const thumbs = req.photo_path ? req.photo_path.split(',').map(p => UPLOADS + p) : [];
+        return (
+          <div style={{ position:'fixed', inset:0, background:'rgba(15,23,42,0.65)', backdropFilter:'blur(14px)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:200, padding:24 }}
+            onClick={()=>setDetail(null)}>
+            <div style={{ background:'#fff', borderRadius:24, width:'100%', maxWidth:540, maxHeight:'90vh', overflowY:'auto', boxShadow:'0 40px 80px rgba(0,0,0,0.3)' }} onClick={e=>e.stopPropagation()}>
+
+              {/* Header band */}
+              <div style={{ background:`linear-gradient(135deg,#0F3D1F,#1B5E38)`, padding:'28px 28px 24px', borderRadius:'24px 24px 0 0', position:'relative' }}>
+                <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', gap:12 }}>
+                  <div>
+                    <div style={{ fontSize:11, fontWeight:700, letterSpacing:'2px', color:'rgba(196,150,60,0.9)', marginBottom:4 }}>REQUEST DETAILS</div>
+                    <div style={{ fontSize:26, fontWeight:900, color:'#fff', letterSpacing:'-0.5px' }}>RJ-{String(req.id).padStart(5,'0')}</div>
+                  </div>
+                  <div style={{ display:'flex', flexDirection:'column', alignItems:'flex-end', gap:8 }}>
+                    <button onClick={()=>setDetail(null)} style={{ background:'rgba(255,255,255,0.12)', border:'none', color:'#fff', borderRadius:8, padding:'6px 12px', cursor:'pointer', fontSize:13 }}>✕ Close</button>
+                    <div style={{ display:'inline-flex', alignItems:'center', gap:6, background:`${sc.dot}25`, border:`1px solid ${sc.dot}50`, borderRadius:50, padding:'5px 13px' }}>
+                      <div style={{ width:6, height:6, borderRadius:'50%', background:sc.dot }}/>
+                      <span style={{ fontSize:12, fontWeight:700, color:sc.dot }}>{S_LABEL[req.status]||req.status}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div style={{ padding:'24px 28px 32px' }}>
+
+                {/* Photos */}
+                {thumbs.length > 0 && (
+                  <div style={{ marginBottom:24 }}>
+                    <div style={{ fontSize:11, fontWeight:700, letterSpacing:'1.5px', color:'#94a3b8', textTransform:'uppercase', marginBottom:10 }}>Food Photos</div>
+                    <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(110px,1fr))', gap:8 }}>
+                      {thumbs.map((url,i) => (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img key={i} src={url} alt={`Photo ${i+1}`} onClick={()=>setLightbox(url)}
+                          style={{ width:'100%', aspectRatio:'1', objectFit:'cover', borderRadius:12, cursor:'zoom-in', border:'1.5px solid #f0f4f8' }}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Info grid */}
+                <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'16px 24px', marginBottom:20 }}>
+                  {[
+                    { label:'Donor / Organisation', value: req.donor_name },
+                    { label:'Phone', value: req.donor_phone, link:`tel:${req.donor_phone}` },
+                    { label:'Food Type', value: req.food_type },
+                    { label:'Serves', value: req.approx_kg ? `~${req.approx_kg} people` : '—' },
+                    { label:'Pickup Address', value: req.pickup_address },
+                    { label:'Ready By', value: req.ready_by ? new Date(req.ready_by).toLocaleString('en-IN',{day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}) : '—' },
+                    { label:'Submitted On', value: req.created_at ? new Date(req.created_at).toLocaleString('en-IN',{day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}) : '—' },
+                  ].map(item => (
+                    <div key={item.label} style={{ gridColumn: item.label === 'Pickup Address' ? 'span 2' : undefined }}>
+                      <div style={{ fontSize:10, fontWeight:700, letterSpacing:'1px', color:'#94a3b8', textTransform:'uppercase', marginBottom:3 }}>{item.label}</div>
+                      {item.link
+                        ? <a href={item.link} style={{ fontSize:14, color:'#1B5E38', fontWeight:600, textDecoration:'none' }}>{item.value}</a>
+                        : <div style={{ fontSize:14, color:'#0f172a', fontWeight:500, lineHeight:1.4 }}>{item.value}</div>
+                      }
+                    </div>
+                  ))}
+                </div>
+
+                {/* Divider */}
+                <div style={{ borderTop:'1.5px solid #f0ebe5', margin:'20px 0' }}/>
+
+                {/* Action buttons */}
+                <div style={{ display:'flex', gap:10, flexWrap:'wrap' }}>
+                  <button onClick={()=>{setStatusMod(req);setNewStatus(req.status);setDetail(null);}} style={{
+                    flex:1, minWidth:120, padding:'11px 16px', borderRadius:10, border:'1.5px solid #e2e8f0',
+                    background:'#fff', color:'#334155', fontSize:13, cursor:'pointer', fontWeight:600,
+                  }}>✏️ Edit Status</button>
+                  {['requested','under_review','assigned'].includes(req.status) && (
+                    <button onClick={()=>{setAssign(req);setAssignDrv('');setDetail(null);}} style={{
+                      flex:2, minWidth:160, padding:'11px 20px', borderRadius:10, border:'none',
+                      background:'linear-gradient(135deg,#C4963C,#D4A84B)', color:'#fff',
+                      fontSize:13, cursor:'pointer', fontWeight:700,
+                      boxShadow:'0 4px 16px rgba(196,150,60,0.3)',
+                    }}>🚗 Assign Driver</button>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* ── LIGHTBOX ── */}
+      {lightbox && (
+        <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.92)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:300, padding:24 }}
+          onClick={()=>setLightbox(null)}>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={lightbox} alt="Full view" style={{ maxWidth:'90vw', maxHeight:'88vh', objectFit:'contain', borderRadius:12 }}/>
+          <button onClick={()=>setLightbox(null)} style={{ position:'absolute', top:20, right:20, background:'rgba(255,255,255,0.1)', border:'1px solid rgba(255,255,255,0.2)', color:'#fff', borderRadius:10, padding:'8px 16px', cursor:'pointer', fontSize:14, fontWeight:600 }}>✕ Close</button>
+        </div>
+      )}
+
     </div>
   );
 }

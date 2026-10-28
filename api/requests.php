@@ -59,7 +59,9 @@ if ($method === 'GET') {
 
 // ── POST — submit new request (public, no auth needed) ───────────
 if ($method === 'POST') {
-    $body = json_decode(file_get_contents('php://input'), true) ?? [];
+    // Support both multipart/form-data (with photo) and application/json
+    $isMultipart = strpos($_SERVER['CONTENT_TYPE'] ?? '', 'multipart') !== false;
+    $body = $isMultipart ? $_POST : (json_decode(file_get_contents('php://input'), true) ?? []);
 
     // Required fields
     foreach (['donor_name','donor_phone','donor_address','food_type','ready_by','pickup_address'] as $f) {
@@ -69,6 +71,41 @@ if ($method === 'POST') {
     // Validate ready_by is a valid datetime
     $readyBy = $body['ready_by'];
     if (!strtotime($readyBy)) jsonOut(['error' => 'ready_by must be a valid date/time'], 400);
+
+    // Handle multiple photo uploads
+    $photoPaths = [];
+    $uploadDir  = __DIR__ . '/uploads/';
+    if (!is_dir($uploadDir)) mkdir($uploadDir, 0755, true);
+
+    // Normalise $_FILES['photos'] array (PHP quirks with array input names)
+    $files = [];
+    if (!empty($_FILES['photos'])) {
+        $f = $_FILES['photos'];
+        if (is_array($f['name'])) {
+            for ($i = 0; $i < count($f['name']); $i++) {
+                if ($f['error'][$i] === UPLOAD_ERR_OK) {
+                    $files[] = ['tmp_name' => $f['tmp_name'][$i], 'name' => $f['name'][$i]];
+                }
+            }
+        } else {
+            if ($f['error'] === UPLOAD_ERR_OK) $files[] = ['tmp_name' => $f['tmp_name'], 'name' => $f['name']];
+        }
+    }
+    // Also accept single 'photo' key
+    if (!empty($_FILES['photo']['tmp_name']) && $_FILES['photo']['error'] === UPLOAD_ERR_OK) {
+        $files[] = ['tmp_name' => $_FILES['photo']['tmp_name'], 'name' => $_FILES['photo']['name']];
+    }
+
+    foreach (array_slice($files, 0, 5) as $file) {
+        $ext = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
+        if (in_array($ext, ['jpg','jpeg','png','webp','gif'])) {
+            $filename = uniqid('rj_', true) . '.' . $ext;
+            if (move_uploaded_file($file['tmp_name'], $uploadDir . $filename)) {
+                $photoPaths[] = 'uploads/' . $filename;
+            }
+        }
+    }
+    $photoPath = $photoPaths ? implode(',', $photoPaths) : null;
 
     // Upsert donor (match by phone)
     $donorPhone = preg_replace('/\D/', '', $body['donor_phone']);
@@ -104,15 +141,16 @@ if ($method === 'POST') {
 
     $pdo->prepare("
         INSERT INTO requests
-            (donor_id, requested_by, food_type, approx_kg, ready_by, pickup_address, status)
-        VALUES (?,?,?,?,?,?,'requested')
+            (donor_id, requested_by, food_type, approx_kg, ready_by, pickup_address, photo_path, status)
+        VALUES (?,?,?,?,?,?,?,'requested')
     ")->execute([
         $donorId,
         $requesterId,
         trim($body['food_type']),
-        isset($body['approx_kg']) ? (float)$body['approx_kg'] : null,
+        isset($body['approx_kg']) && $body['approx_kg'] !== '' ? (float)$body['approx_kg'] : null,
         date('Y-m-d H:i:s', strtotime($readyBy)),
         trim($body['pickup_address']),
+        $photoPath,
     ]);
 
     $newId = (int)$pdo->lastInsertId();

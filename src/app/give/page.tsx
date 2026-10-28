@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import Link from 'next/link';
 
 const API = 'https://slipms.com/rajyash-api';
@@ -11,20 +11,47 @@ export default function GivePage() {
   const [trackingId, setTrackingId] = useState('');
   const [form, setForm] = useState({
     donor_name: '', donor_phone: '', donor_address: '',
-    food_type: '', approx_kg: '', serves: '', ready_by: '', pickup_address: '',
+    food_type: '', approx_kg: '', ready_by: '', pickup_address: '',
   });
+  const [photos, setPhotos] = useState<File[]>([]);
+  const [photoPreviews, setPhotoPreviews] = useState<string[]>([]);
+  const fileRef = useRef<HTMLInputElement>(null);
 
   function set(k: string, v: string) { setForm(f => ({ ...f, [k]: v })); }
+
+  function handlePhotos(files: FileList | null) {
+    if (!files || files.length === 0) return;
+    const newFiles = Array.from(files).filter(f => f.size <= 10 * 1024 * 1024);
+    const combined = [...photos, ...newFiles].slice(0, 5); // max 5
+    setPhotos(combined);
+    combined.forEach((file, i) => {
+      if (photoPreviews[i]) return;
+      const reader = new FileReader();
+      reader.onload = e => setPhotoPreviews(prev => { const a = [...prev]; a[i] = e.target?.result as string; return a; });
+      reader.readAsDataURL(file);
+    });
+    // rebuild previews for all
+    const previews: string[] = [];
+    combined.forEach((file, i) => {
+      const reader = new FileReader();
+      reader.onload = e => { previews[i] = e.target?.result as string; if (previews.filter(Boolean).length === combined.length) setPhotoPreviews([...previews]); };
+      reader.readAsDataURL(file);
+    });
+  }
+
+  function removePhoto(idx: number) {
+    setPhotos(p => p.filter((_, i) => i !== idx));
+    setPhotoPreviews(p => p.filter((_, i) => i !== idx));
+  }
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     setError(''); setLoading(true);
     try {
-      const res = await fetch(`${API}/requests.php`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(form),
-      });
+      const fd = new FormData();
+      Object.entries(form).forEach(([k, v]) => v && fd.append(k, v));
+      photos.forEach(p => fd.append('photos[]', p));
+      const res = await fetch(`${API}/requests.php`, { method: 'POST', body: fd });
       const data = await res.json();
       if (!res.ok || data.error) { setError(data.error || 'Something went wrong. Please try again.'); return; }
       setTrackingId(data.tracking_id || 'RJ-' + String(data.id).padStart(5, '0'));
@@ -55,7 +82,7 @@ export default function GivePage() {
         </div>
         <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', justifyContent: 'center' }}>
           <Link href={`/track?id=${trackingId}`} className="btn-gold" style={{ fontSize: 15 }}>Track Status →</Link>
-          <button onClick={() => { setStep('form'); setForm({ donor_name:'',donor_phone:'',donor_address:'',food_type:'',approx_kg:'',serves:'',ready_by:'',pickup_address:'' }); }}
+          <button onClick={() => { setStep('form'); setForm({ donor_name:'',donor_phone:'',donor_address:'',food_type:'',approx_kg:'',ready_by:'',pickup_address:'' }); setPhotos([]); setPhotoPreviews([]); }}
             style={{ padding: '13px 24px', borderRadius: 50, border: '1.5px solid #e0ebe5', background: '#fff', color: '#0F3D1F', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>
             Submit Another
           </button>
@@ -152,6 +179,56 @@ export default function GivePage() {
                 onFocus={e => { e.target.style.borderColor='#0F3D1F'; e.target.style.boxShadow='0 0 0 3px rgba(10,46,30,0.08)'; }}
                 onBlur={e => { e.target.style.borderColor='#e0ebe5'; e.target.style.boxShadow='none'; }} />
             </div>
+          </div>
+
+          <hr style={{ border: 'none', borderTop: '1.5px solid #f0ebe5', margin: '28px 0' }} />
+
+          {/* Photo upload */}
+          <div style={{ marginBottom: 8 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '1.5px', color: '#C4963C', textTransform: 'uppercase' }}>Food Photos (Optional)</div>
+              {photos.length > 0 && photos.length < 5 && (
+                <span style={{ fontSize: 12, color: '#1B5E38', fontWeight: 600, cursor: 'pointer', textDecoration: 'underline' }} onClick={() => { if (fileRef.current) { fileRef.current.value = ''; fileRef.current.click(); } }}>+ Add more</span>
+              )}
+            </div>
+            <input
+              ref={fileRef} type="file" accept="image/*" multiple
+              style={{ display: 'none' }}
+              onChange={e => handlePhotos(e.target.files)}
+            />
+            {photos.length === 0 ? (
+              <div
+                onClick={() => fileRef.current?.click()}
+                onDragOver={e => { e.preventDefault(); e.currentTarget.style.borderColor='#0F3D1F'; e.currentTarget.style.background='#f0f7f0'; }}
+                onDragLeave={e => { e.currentTarget.style.borderColor='#DDE8D8'; e.currentTarget.style.background='#FDFBF7'; }}
+                onDrop={e => { e.preventDefault(); handlePhotos(e.dataTransfer.files); e.currentTarget.style.borderColor='#DDE8D8'; e.currentTarget.style.background='#FDFBF7'; }}
+                style={{
+                  border: '2px dashed #DDE8D8', borderRadius: 14, padding: '28px 20px',
+                  textAlign: 'center', cursor: 'pointer', background: '#FDFBF7', transition: 'all 0.2s',
+                }}>
+                <div style={{ fontSize: 32, marginBottom: 8 }}>📸</div>
+                <div style={{ fontSize: 14, fontWeight: 600, color: '#0F3D1F', marginBottom: 4 }}>Tap to add photos</div>
+                <div style={{ fontSize: 12, color: '#A8B5AD' }}>Up to 5 photos · JPG, PNG or WebP · Max 10 MB each</div>
+              </div>
+            ) : (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(120px,1fr))', gap: 10 }}>
+                {photoPreviews.map((src, i) => src && (
+                  <div key={i} style={{ position: 'relative', borderRadius: 10, overflow: 'hidden', border: '1.5px solid #DDE8D8', aspectRatio: '1', background: '#f0ebe5' }}>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={src} alt={`Photo ${i+1}`} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+                    <button type="button" onClick={() => removePhoto(i)}
+                      style={{ position: 'absolute', top: 5, right: 5, width: 24, height: 24, borderRadius: '50%', background: 'rgba(0,0,0,0.6)', border: 'none', color: '#fff', fontSize: 12, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>✕</button>
+                  </div>
+                ))}
+                {photos.length < 5 && (
+                  <div onClick={() => { if (fileRef.current) { fileRef.current.value = ''; fileRef.current.click(); } }}
+                    style={{ borderRadius: 10, border: '2px dashed #DDE8D8', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', aspectRatio: '1', cursor: 'pointer', background: '#FDFBF7', gap: 4 }}>
+                    <span style={{ fontSize: 22, color: '#A8B5AD' }}>+</span>
+                    <span style={{ fontSize: 11, color: '#A8B5AD' }}>Add</span>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           {error && (
