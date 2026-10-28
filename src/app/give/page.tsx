@@ -11,7 +11,7 @@ export default function GivePage() {
   const [trackingId, setTrackingId] = useState('');
   const [form, setForm] = useState({
     donor_name: '', donor_phone: '', donor_address: '',
-    food_type: '', approx_kg: '', ready_by: '', pickup_address: '',
+    food_type: '', approx_kg: '', serves: '', ready_by: '', pickup_address: '',
   });
 
   function set(k: string, v: string) { setForm(f => ({ ...f, [k]: v })); }
@@ -55,7 +55,7 @@ export default function GivePage() {
         </div>
         <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', justifyContent: 'center' }}>
           <Link href={`/track?id=${trackingId}`} className="btn-saffron" style={{ fontSize: 15 }}>Track Status →</Link>
-          <button onClick={() => { setStep('form'); setForm({ donor_name:'',donor_phone:'',donor_address:'',food_type:'',approx_kg:'',ready_by:'',pickup_address:'' }); }}
+          <button onClick={() => { setStep('form'); setForm({ donor_name:'',donor_phone:'',donor_address:'',food_type:'',approx_kg:'',serves:'',ready_by:'',pickup_address:'' }); }}
             style={{ padding: '13px 24px', borderRadius: 50, border: '1.5px solid #e0ebe5', background: '#fff', color: '#0A2E1E', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>
             Submit Another
           </button>
@@ -131,9 +131,9 @@ export default function GivePage() {
                   onBlur={e => { e.target.style.borderColor='#e0ebe5'; e.target.style.boxShadow='none'; }} />
               </div>
               <div>
-                <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#145C3A', marginBottom: 6 }}>Approx. Quantity (kg)</label>
-                <input type="number" min="0.5" step="0.5" value={form.approx_kg} onChange={e => set('approx_kg', e.target.value)}
-                  placeholder="e.g. 15" style={inputStyle}
+                <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#145C3A', marginBottom: 6 }}>Serves (no. of people)</label>
+                <input type="number" min="1" step="1" value={form.approx_kg} onChange={e => set('approx_kg', e.target.value)}
+                  placeholder="e.g. 50" style={inputStyle}
                   onFocus={e => { e.target.style.borderColor='#0A2E1E'; e.target.style.boxShadow='0 0 0 3px rgba(10,46,30,0.08)'; }}
                   onBlur={e => { e.target.style.borderColor='#e0ebe5'; e.target.style.boxShadow='none'; }} />
               </div>
