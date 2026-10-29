@@ -32,6 +32,26 @@ if ($method === 'GET') {
         jsonOut($row);
     }
 
+    // Phone lookup — public, no auth needed
+    if (isset($_GET['phone'])) {
+        $phone = preg_replace('/\D/', '', $_GET['phone']);
+        if (strlen($phone) < 7) jsonOut(['error' => 'Invalid phone number'], 400);
+        $stmt = $pdo->prepare("
+            SELECT r.id, r.food_type, r.approx_kg, r.status, r.created_at, r.ready_by,
+                   r.pickup_address, d.name AS donor_name,
+                   t.pickup_photo, t.driver_id, drv.name AS driver_name
+            FROM requests r
+            JOIN donors d ON d.id = r.donor_id
+            LEFT JOIN trips t ON t.request_id = r.id
+            LEFT JOIN users drv ON drv.id = t.driver_id
+            WHERE d.phone = ?
+            ORDER BY r.created_at DESC
+            LIMIT 20
+        ");
+        $stmt->execute([$phone]);
+        jsonOut($stmt->fetchAll());
+    }
+
     // List — requires auth
     $me = requireAuth();
     if ($me['role'] === 'admin') {
@@ -116,6 +136,19 @@ if ($method === 'POST') {
 
     // Upsert donor (match by phone)
     $donorPhone = preg_replace('/\D/', '', $body['donor_phone']);
+
+    // Rate limit: max 5 requests per phone in 24 hours
+    $rlStmt = $pdo->prepare("
+        SELECT COUNT(*) AS cnt FROM requests r
+        JOIN donors d ON d.id = r.donor_id
+        WHERE d.phone = ? AND r.created_at > DATE_SUB(NOW(), INTERVAL 24 HOUR)
+    ");
+    $rlStmt->execute([$donorPhone]);
+    $rlRow = $rlStmt->fetch();
+    if ($rlRow && (int)$rlRow['cnt'] >= 5) {
+        jsonOut(['error' => 'Too many requests from this number. Please try again tomorrow.'], 429);
+    }
+
     $dstmt = $pdo->prepare("SELECT id FROM donors WHERE phone = ? LIMIT 1");
     $dstmt->execute([$donorPhone]);
     $donor = $dstmt->fetch();

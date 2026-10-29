@@ -68,4 +68,41 @@ if ($method === 'POST') {
     jsonOut(['success' => true], 201);
 }
 
+if ($method === 'PUT') {
+    $me = requireAuth();
+    requireRole($me, ['admin']);
+
+    $id   = isset($_GET['id']) ? (int)$_GET['id'] : 0;
+    if (!$id) jsonOut(['error' => 'id required'], 400);
+
+    $body = json_decode(file_get_contents('php://input'), true) ?? [];
+
+    // Verify driver exists
+    $chk = $pdo->prepare("SELECT u.id FROM users u JOIN drivers d ON d.user_id = u.id WHERE u.id = ? AND u.role = 'driver' LIMIT 1");
+    $chk->execute([$id]);
+    if (!$chk->fetch()) jsonOut(['error' => 'Driver not found'], 404);
+
+    $updates = [];
+    $params  = [];
+
+    if (isset($body['vehicle_number'])) {
+        $pdo->prepare("UPDATE drivers SET vehicle_number = ? WHERE user_id = ?")
+            ->execute([trim($body['vehicle_number']), $id]);
+    }
+
+    if (isset($body['is_active'])) {
+        $active = $body['is_active'] ? 1 : 0;
+        $pdo->prepare("UPDATE users SET is_active = ? WHERE id = ?")
+            ->execute([$active, $id]);
+    }
+
+    if (isset($body['name'])) {
+        $pdo->prepare("UPDATE users SET name = ? WHERE id = ?")
+            ->execute([trim($body['name']), $id]);
+    }
+
+    auditLog($pdo, $me['sub'], 'update_driver', 'users', $id, $body);
+    jsonOut(['success' => true]);
+}
+
 jsonOut(['error' => 'Method not allowed'], 405);

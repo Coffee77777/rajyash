@@ -75,7 +75,9 @@ export default function AdminPage() {
   const [lightbox, setLightbox]     = useState<string|null>(null);
   const [detailModal, setDetail]    = useState<Request|null>(null);
   const [search, setSearch]         = useState('');
-  const [activeTab, setActiveTab]   = useState<'requests'|'drivers'>('requests');
+  const [activeTab, setActiveTab]   = useState<'requests'|'drivers'|'analytics'>('requests');
+  const [analytics, setAnalytics]   = useState<Record<string,unknown>|null>(null);
+  const [analyticsLoading, setAnalyticsLoading] = useState(false);
   const [newCount, setNewCount]     = useState(0);
   const lastCountRef                = useRef(0);
   const [notes, setNotes]           = useState<{id:number;note:string;created_at:string;admin_name:string}[]>([]);
@@ -187,6 +189,18 @@ export default function AdminPage() {
       fetchAll(token!, filterStatus);
     } finally { setDriverSaving(false); }
   }
+
+  const fetchAnalytics = useCallback(async (tok: string) => {
+    setAnalyticsLoading(true);
+    try {
+      const res = await fetch(`${API}/analytics.php`, { headers: { Authorization:`Bearer ${tok}` } });
+      if (res.ok) setAnalytics(await res.json());
+    } finally { setAnalyticsLoading(false); }
+  }, []);
+
+  useEffect(() => {
+    if (token && activeTab === 'analytics') fetchAnalytics(token);
+  }, [token, activeTab, fetchAnalytics]);
 
   async function doLogin(e: React.FormEvent) {
     e.preventDefault(); setLoginErr(''); setLogging(true);
@@ -415,14 +429,14 @@ export default function AdminPage() {
         <div style={{ marginBottom:24, display:'flex', alignItems:'center', justifyContent:'space-between', flexWrap:'wrap', gap:12 }}>
           <div>
             <h1 style={{ fontSize:24, fontWeight:800, color:'#0f172a', letterSpacing:'-0.5px', marginBottom:4 }}>
-              {activeTab === 'requests' ? 'Requests Dashboard' : 'Driver Deliveries'}
+              {activeTab === 'requests' ? 'Requests Dashboard' : activeTab === 'drivers' ? 'Driver Deliveries' : 'Analytics'}
             </h1>
             <p style={{ fontSize:14, color:'#64748b' }}>
-              {activeTab === 'requests' ? 'Manage and track all food pickup requests' : 'Per-driver delivery history and stats'}
+              {activeTab === 'requests' ? 'Manage and track all food pickup requests' : activeTab === 'drivers' ? 'Per-driver delivery history and stats' : 'Impact metrics and operational data'}
             </p>
           </div>
           <div style={{ display:'flex', gap:6 }}>
-            {(['requests','drivers'] as const).map(tab => (
+            {(['requests','drivers','analytics'] as const).map(tab => (
               <button key={tab} onClick={()=>setActiveTab(tab)} style={{
                 padding:'8px 20px', borderRadius:10, border:'1.5px solid',
                 borderColor: activeTab===tab ? '#1B5E38' : '#e2e8f0',
@@ -431,7 +445,7 @@ export default function AdminPage() {
                 fontSize:13, cursor:'pointer', fontWeight: activeTab===tab ? 700 : 500,
                 transition:'all 0.15s',
               }}>
-                {tab === 'requests' ? '📋 Requests' : '🚗 Drivers'}
+                {tab === 'requests' ? '📋 Requests' : tab === 'drivers' ? '🚗 Drivers' : '📊 Analytics'}
               </button>
             ))}
           </div>
@@ -526,6 +540,55 @@ export default function AdminPage() {
         {/* ── DRIVERS TAB ── */}
         {activeTab === 'drivers' && (
           <div style={{ display:'flex', flexDirection:'column', gap:16 }}>
+            {/* All Registered Drivers */}
+            <div style={{ background:'#fff', borderRadius:16, border:'1px solid #f1f5f9', boxShadow:'0 1px 4px rgba(0,0,0,0.05)', overflow:'hidden', marginBottom:8 }}>
+              <div style={{ padding:'16px 20px', borderBottom:'1px solid #f1f5f9', display:'flex', alignItems:'center', justifyContent:'space-between' }}>
+                <div style={{ fontWeight:700, color:'#0f172a', fontSize:15 }}>Registered Drivers <span style={{ fontSize:13, color:'#94a3b8', fontWeight:400 }}>({drivers.length})</span></div>
+              </div>
+              {drivers.length === 0 ? (
+                <div style={{ padding:'28px', textAlign:'center', color:'#94a3b8', fontSize:14 }}>No drivers registered yet</div>
+              ) : (
+                <div style={{ display:'flex', flexDirection:'column' }}>
+                  {drivers.map((drv, i) => (
+                    <div key={drv.id} style={{ padding:'14px 20px', display:'flex', alignItems:'center', gap:14, borderTop: i===0?'none':'1px solid #f8fafc' }}>
+                      <div style={{ width:38, height:38, borderRadius:12, background:'linear-gradient(135deg,#0F3D1F,#1B5E38)', display:'flex', alignItems:'center', justifyContent:'center', color:'#fff', fontWeight:800, fontSize:15, flexShrink:0 }}>
+                        {drv.name.charAt(0).toUpperCase()}
+                      </div>
+                      <div style={{ flex:1, minWidth:0 }}>
+                        <div style={{ fontWeight:700, color:'#0f172a', fontSize:14 }}>{drv.name}</div>
+                        <div style={{ fontSize:12, color:'#64748b', marginTop:1 }}>
+                          <a href={`tel:${drv.phone}`} style={{ color:'#1B5E38', textDecoration:'none' }}>{drv.phone}</a>
+                          {drv.vehicle_number ? <span style={{ color:'#94a3b8' }}> · {drv.vehicle_number}</span> : <span style={{ color:'#cbd5e1' }}> · no vehicle#</span>}
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => {
+                          const newVehicle = window.prompt('Update vehicle number:', drv.vehicle_number || '');
+                          if (newVehicle === null) return;
+                          fetch(`${API}/drivers.php?id=${drv.id}`, {
+                            method:'PUT', headers:{'Content-Type':'application/json', Authorization:`Bearer ${token}`},
+                            body: JSON.stringify({ vehicle_number: newVehicle }),
+                          }).then(() => fetchAll(token!, filterStatus));
+                        }}
+                        style={{ padding:'6px 12px', borderRadius:8, border:'1.5px solid #e2e8f0', background:'#fff', color:'#64748b', fontSize:12, cursor:'pointer', fontWeight:500, flexShrink:0 }}>
+                        Edit
+                      </button>
+                      <button
+                        onClick={() => {
+                          if (!window.confirm(`Deactivate ${drv.name}? They won't be able to log in.`)) return;
+                          fetch(`${API}/drivers.php?id=${drv.id}`, {
+                            method:'PUT', headers:{'Content-Type':'application/json', Authorization:`Bearer ${token}`},
+                            body: JSON.stringify({ is_active: false }),
+                          }).then(() => fetchAll(token!, filterStatus));
+                        }}
+                        style={{ padding:'6px 12px', borderRadius:8, border:'1.5px solid #fecaca', background:'#fef2f2', color:'#dc2626', fontSize:12, cursor:'pointer', fontWeight:600, flexShrink:0 }}>
+                        Deactivate
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
             {/* Add Driver button */}
             <div style={{ display:'flex', justifyContent:'flex-end', marginBottom:8 }}>
               <button onClick={()=>{setDriverModal(true);setDriverErr('');}} style={{
@@ -603,6 +666,137 @@ export default function AdminPage() {
               </div>
             ))}
           </div>
+        )}
+
+        {/* ── ANALYTICS TAB ── */}
+        {activeTab === 'analytics' && (
+          analyticsLoading || !analytics ? (
+            <div style={{ textAlign:'center', padding:80, color:'#94a3b8' }}>
+              <div style={{ fontSize:32, marginBottom:12 }}>📊</div>
+              <div style={{ fontSize:14 }}>Loading analytics…</div>
+            </div>
+          ) : (() => {
+            const tm = analytics.this_month as Record<string,number> ?? {};
+            const at = analytics.all_time as Record<string,number> ?? {};
+            const dow = analytics.by_dow as {day:string;count:number}[] ?? [];
+            const donors = analytics.top_donors as {name:string;trips:number;total_kg:number}[] ?? [];
+            const monthly = analytics.monthly_trend as {month:string;total:number;delivered:number}[] ?? [];
+            const breakdown = analytics.status_breakdown as Record<string,number> ?? {};
+            const maxDow = Math.max(...dow.map(d=>d.count), 1);
+            const maxMonthly = Math.max(...monthly.map(m=>m.total), 1);
+
+            return (
+              <div style={{ display:'flex', flexDirection:'column', gap:24 }}>
+
+                {/* This Month stat cards */}
+                <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(180px,1fr))', gap:16 }}>
+                  {[
+                    { label:'This Month', value:tm.total??0, icon:'📋', color:'#6366f1', light:'#eef2ff' },
+                    { label:'Delivered', value:tm.delivered??0, icon:'✅', color:'#22c55e', light:'#f0fdf4' },
+                    { label:'KG Rescued', value:Math.round(Number(tm.kg_rescued??0)), icon:'🍱', color:'#f59e0b', light:'#fefce8' },
+                    { label:'Active Now', value:tm.active??0, icon:'🚗', color:'#f97316', light:'#fff7ed' },
+                  ].map(s => (
+                    <div key={s.label} style={{ background:'#fff', borderRadius:16, padding:'20px 22px', boxShadow:'0 1px 4px rgba(0,0,0,0.06)', border:'1px solid #f1f5f9', display:'flex', alignItems:'center', gap:14 }}>
+                      <div style={{ width:44, height:44, borderRadius:12, background:s.light, display:'flex', alignItems:'center', justifyContent:'center', fontSize:20, flexShrink:0 }}>{s.icon}</div>
+                      <div>
+                        <div style={{ fontSize:26, fontWeight:800, color:s.color, lineHeight:1, letterSpacing:'-0.5px' }}>{s.value.toLocaleString('en-IN')}</div>
+                        <div style={{ fontSize:12, color:'#94a3b8', marginTop:3, fontWeight:500 }}>{s.label}</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:20 }}>
+
+                  {/* Day of week chart */}
+                  <div style={{ background:'#fff', borderRadius:16, padding:'24px', boxShadow:'0 1px 4px rgba(0,0,0,0.06)', border:'1px solid #f1f5f9' }}>
+                    <div style={{ fontSize:13, fontWeight:700, color:'#0f172a', marginBottom:20 }}>Requests by Day of Week <span style={{ fontSize:11, color:'#94a3b8', fontWeight:400 }}>(last 90 days)</span></div>
+                    <div style={{ display:'flex', alignItems:'flex-end', gap:8, height:100 }}>
+                      {dow.map(d => (
+                        <div key={d.day} style={{ flex:1, display:'flex', flexDirection:'column', alignItems:'center', gap:5 }}>
+                          <div style={{ fontSize:10, color:'#64748b', fontWeight:600 }}>{d.count}</div>
+                          <div style={{
+                            width:'100%', borderRadius:'4px 4px 0 0',
+                            height:`${Math.max((d.count/maxDow)*80, 4)}px`,
+                            background:'linear-gradient(180deg,#1B5E38,#2D8A56)',
+                            transition:'height 0.5s',
+                          }}/>
+                          <div style={{ fontSize:10, color:'#94a3b8' }}>{d.day}</div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Monthly trend */}
+                  <div style={{ background:'#fff', borderRadius:16, padding:'24px', boxShadow:'0 1px 4px rgba(0,0,0,0.06)', border:'1px solid #f1f5f9' }}>
+                    <div style={{ fontSize:13, fontWeight:700, color:'#0f172a', marginBottom:20 }}>Monthly Trend <span style={{ fontSize:11, color:'#94a3b8', fontWeight:400 }}>(last 6 months)</span></div>
+                    <div style={{ display:'flex', alignItems:'flex-end', gap:8, height:100 }}>
+                      {monthly.map(m => (
+                        <div key={m.month} style={{ flex:1, display:'flex', flexDirection:'column', alignItems:'center', gap:5 }}>
+                          <div style={{ fontSize:10, color:'#64748b', fontWeight:600 }}>{m.total}</div>
+                          <div style={{ width:'100%', position:'relative', borderRadius:'4px 4px 0 0', height:`${Math.max((m.total/maxMonthly)*80, 4)}px`, background:'#e2e8f0' }}>
+                            <div style={{ position:'absolute', bottom:0, left:0, right:0, borderRadius:'4px 4px 0 0', height:`${Math.max((Number(m.delivered)/maxMonthly)*80, 2)}px`, background:'linear-gradient(180deg,#22c55e,#16a34a)' }}/>
+                          </div>
+                          <div style={{ fontSize:10, color:'#94a3b8' }}>{m.month?.slice(5)}</div>
+                        </div>
+                      ))}
+                    </div>
+                    <div style={{ display:'flex', gap:14, marginTop:12 }}>
+                      <div style={{ display:'flex', alignItems:'center', gap:5, fontSize:11, color:'#94a3b8' }}><div style={{ width:10, height:10, borderRadius:2, background:'#e2e8f0' }}/> Total</div>
+                      <div style={{ display:'flex', alignItems:'center', gap:5, fontSize:11, color:'#94a3b8' }}><div style={{ width:10, height:10, borderRadius:2, background:'#22c55e' }}/> Delivered</div>
+                    </div>
+                  </div>
+                </div>
+
+                <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:20 }}>
+
+                  {/* Top donors */}
+                  <div style={{ background:'#fff', borderRadius:16, padding:'24px', boxShadow:'0 1px 4px rgba(0,0,0,0.06)', border:'1px solid #f1f5f9' }}>
+                    <div style={{ fontSize:13, fontWeight:700, color:'#0f172a', marginBottom:16 }}>Top Donors (All Time)</div>
+                    <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
+                      {donors.map((d,i) => (
+                        <div key={i} style={{ display:'flex', alignItems:'center', gap:12 }}>
+                          <div style={{ width:26, height:26, borderRadius:8, background: i===0?'#fef9ec':i===1?'#f1f5f9':'#f8fafc', display:'flex', alignItems:'center', justifyContent:'center', fontSize:12, fontWeight:800, color: i===0?'#C4963C':i===1?'#94a3b8':'#cbd5e1', flexShrink:0 }}>{i+1}</div>
+                          <div style={{ flex:1, minWidth:0 }}>
+                            <div style={{ fontSize:13, fontWeight:600, color:'#0f172a', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{d.name}</div>
+                            <div style={{ fontSize:11, color:'#94a3b8' }}>{d.trips} trips · {Math.round(d.total_kg)} kg</div>
+                          </div>
+                          <div style={{ fontSize:14, fontWeight:800, color:'#1B5E38' }}>{d.trips}</div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Status breakdown */}
+                  <div style={{ background:'#fff', borderRadius:16, padding:'24px', boxShadow:'0 1px 4px rgba(0,0,0,0.06)', border:'1px solid #f1f5f9' }}>
+                    <div style={{ fontSize:13, fontWeight:700, color:'#0f172a', marginBottom:16 }}>All-Time Status Breakdown</div>
+                    <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
+                      {Object.entries(S_LABEL).filter(([k]) => breakdown[k] > 0).sort(([,a],[,b])=>(breakdown[b]||0)-(breakdown[a]||0)).map(([status, label]) => {
+                        const total = Object.values(breakdown).reduce((a,b)=>a+b,0)||1;
+                        const pct = Math.round(((breakdown[status]||0)/total)*100);
+                        const sc = S_COLOR[status];
+                        return (
+                          <div key={status}>
+                            <div style={{ display:'flex', justifyContent:'space-between', marginBottom:3 }}>
+                              <span style={{ fontSize:12, color:'#334155', fontWeight:500 }}>{label}</span>
+                              <span style={{ fontSize:12, color:'#64748b' }}>{breakdown[status]||0} <span style={{ color:'#94a3b8' }}>({pct}%)</span></span>
+                            </div>
+                            <div style={{ height:6, borderRadius:3, background:'#f1f5f9', overflow:'hidden' }}>
+                              <div style={{ height:'100%', width:`${pct}%`, borderRadius:3, background:sc?.dot||'#94a3b8', transition:'width 0.6s' }}/>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                    <div style={{ marginTop:16, paddingTop:14, borderTop:'1px solid #f1f5f9', display:'flex', justifyContent:'space-between' }}>
+                      <span style={{ fontSize:12, color:'#94a3b8' }}>All time total</span>
+                      <span style={{ fontSize:14, fontWeight:800, color:'#0f172a' }}>{at.total?.toLocaleString('en-IN') ?? 0} requests</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            );
+          })()
         )}
 
         {/* ── REQUEST CARDS ── */}
@@ -965,6 +1159,29 @@ export default function AdminPage() {
                           background:'#fff', color:'#166534', fontSize:12, cursor:'pointer', fontWeight:600,
                         }}>Copy</button>
                       </div>
+                    </div>
+                  );
+                })()}
+
+                {/* Thank-you WhatsApp — shown when delivered */}
+                {(req.status === 'delivered' || req.status === 'closed') && (() => {
+                  const kg = req.approx_kg ? ` serving approximately ${req.approx_kg} people` : '';
+                  const msg = `Dear ${req.donor_name},\n\nThank you so much for your generous donation of ${req.food_type}${kg}! 🙏\n\nYour surplus food has reached families in need today through Rajyash Foundation. Every meal you give changes a life.\n\nTrack your impact: https://rajyash.vercel.app/track?id=RJ-${String(req.id).padStart(5,'0')}\n\n— Team Rajyash`;
+                  const waUrl = `https://wa.me/${(req.donor_phone||'').replace(/\D/g,'')}?text=${encodeURIComponent(msg)}`;
+                  return (
+                    <div style={{ background:'linear-gradient(135deg,#f0fdf4,#dcfce7)', border:'1.5px solid #86efac', borderRadius:12, padding:'14px 18px', marginBottom:20, display:'flex', alignItems:'center', gap:14 }}>
+                      <span style={{ fontSize:24, flexShrink:0 }}>💛</span>
+                      <div style={{ flex:1 }}>
+                        <div style={{ fontSize:13, fontWeight:700, color:'#166534', marginBottom:2 }}>Send a Thank You</div>
+                        <div style={{ fontSize:11, color:'#6B8A7A', lineHeight:1.4 }}>Let {req.donor_name} know their food made a difference today.</div>
+                      </div>
+                      <a href={waUrl} target="_blank" rel="noopener noreferrer" style={{
+                        padding:'9px 18px', borderRadius:10, background:'#25D366', color:'#fff',
+                        fontSize:13, fontWeight:700, textDecoration:'none', display:'flex', alignItems:'center', gap:6,
+                        flexShrink:0, boxShadow:'0 4px 12px rgba(37,211,102,0.3)',
+                      }}>
+                        WhatsApp 💚
+                      </a>
                     </div>
                   );
                 })()}

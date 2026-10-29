@@ -22,6 +22,11 @@ function TrackContent() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [request, setRequest] = useState<Record<string, string> | null>(null);
+  const [searchMode, setSearchMode] = useState<'id'|'phone'>('id');
+  const [phoneInput, setPhoneInput] = useState('');
+  const [phoneResults, setPhoneResults] = useState<Record<string,string>[]|null>(null);
+  const [phoneLoading, setPhoneLoading] = useState(false);
+  const [phoneError, setPhoneError] = useState('');
 
   async function search(id?: string) {
     const raw = (id || inputId).trim();
@@ -35,6 +40,20 @@ function TrackContent() {
       setRequest(data);
     } catch { setError('Network error. Please try again.'); }
     finally { setLoading(false); }
+  }
+
+  async function searchByPhone() {
+    const ph = phoneInput.trim().replace(/\D/g, '');
+    if (!ph || ph.length < 7) return;
+    setPhoneLoading(true); setPhoneError(''); setPhoneResults(null);
+    try {
+      const res = await fetch(`${API}/requests.php?phone=${encodeURIComponent(ph)}`);
+      const data = await res.json();
+      if (!res.ok || data.error) { setPhoneError('No requests found for this phone number.'); return; }
+      if (!Array.isArray(data) || data.length === 0) { setPhoneError('No requests found for this phone number.'); return; }
+      setPhoneResults(data);
+    } catch { setPhoneError('Network error. Please try again.'); }
+    finally { setPhoneLoading(false); }
   }
 
   useEffect(() => {
@@ -67,33 +86,70 @@ function TrackContent() {
           <h1 style={{ fontSize:'clamp(30px,5vw,48px)', fontWeight:900, color:'#fff', letterSpacing:'-1.5px', marginBottom:10 }}>
             Where&apos;s your food going?
           </h1>
-          <p style={{ color:'rgba(168,197,181,0.65)', fontSize:15 }}>Enter your tracking ID to see real-time status.</p>
+          <p style={{ color:'rgba(168,197,181,0.65)', fontSize:15 }}>Track your donation in real-time.</p>
+        </div>
+
+        {/* Mode toggle */}
+        <div style={{ display:'flex', background:'rgba(255,255,255,0.08)', borderRadius:12, padding:4, marginBottom:16, gap:4 }}>
+          {([['id','🔍 By Tracking ID'],['phone','📱 By Phone Number']] as const).map(([mode, label]) => (
+            <button key={mode} onClick={()=>{setSearchMode(mode);setPhoneResults(null);setPhoneError('');setError('');setRequest(null);}}
+              style={{
+                flex:1, padding:'9px 16px', borderRadius:9, border:'none', fontSize:13, fontWeight:600,
+                cursor:'pointer', transition:'all 0.2s',
+                background: searchMode===mode ? '#fff' : 'transparent',
+                color: searchMode===mode ? '#0F3D1F' : 'rgba(168,197,181,0.7)',
+                boxShadow: searchMode===mode ? '0 2px 8px rgba(0,0,0,0.12)' : 'none',
+              }}>
+              {label}
+            </button>
+          ))}
         </div>
 
         {/* Search */}
         <div style={{ background:'rgba(255,255,255,0.05)', border:'1px solid rgba(255,255,255,0.1)', borderRadius:20, padding:'24px', marginBottom:28, backdropFilter:'blur(12px)' }}>
-          <div style={{ display:'flex', gap:10 }}>
-            <input
-              value={inputId} onChange={e => setInputId(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && search()}
-              placeholder="e.g. RJ-00142"
-              style={{
-                flex:1, padding:'13px 18px', border:'1.5px solid rgba(255,255,255,0.15)', borderRadius:12,
-                fontSize:15, fontFamily:'inherit', color:'#fff',
-                background:'rgba(255,255,255,0.07)', outline:'none',
-                transition:'border-color 0.2s',
-              }}
-              onFocus={e => (e.target.style.borderColor='rgba(245,151,19,0.6)')}
-              onBlur={e => (e.target.style.borderColor='rgba(255,255,255,0.15)')}
-            />
-            <button onClick={() => search()} disabled={loading} className="btn-gold"
-              style={{ padding:'13px 24px', fontSize:14, whiteSpace:'nowrap', opacity:loading ? 0.7 : 1 }}>
-              {loading ? '…' : 'Track →'}
-            </button>
-          </div>
-          {error && (
+          {searchMode === 'id' ? (
+            <div style={{ display:'flex', gap:10 }}>
+              <input
+                value={inputId} onChange={e => setInputId(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && search()}
+                placeholder="e.g. RJ-00142"
+                style={{
+                  flex:1, padding:'13px 18px', border:'1.5px solid rgba(255,255,255,0.15)', borderRadius:12,
+                  fontSize:15, fontFamily:'inherit', color:'#fff',
+                  background:'rgba(255,255,255,0.07)', outline:'none', transition:'border-color 0.2s',
+                }}
+                onFocus={e => (e.target.style.borderColor='rgba(245,151,19,0.6)')}
+                onBlur={e => (e.target.style.borderColor='rgba(255,255,255,0.15)')}
+              />
+              <button onClick={() => search()} disabled={loading} className="btn-gold"
+                style={{ padding:'13px 24px', fontSize:14, whiteSpace:'nowrap', opacity:loading ? 0.7 : 1 }}>
+                {loading ? '…' : 'Track →'}
+              </button>
+            </div>
+          ) : (
+            <div style={{ display:'flex', gap:10 }}>
+              <input
+                value={phoneInput} onChange={e => setPhoneInput(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && searchByPhone()}
+                placeholder="Your mobile number e.g. 9876543210"
+                type="tel"
+                style={{
+                  flex:1, padding:'13px 18px', border:'1.5px solid rgba(255,255,255,0.15)', borderRadius:12,
+                  fontSize:15, fontFamily:'inherit', color:'#fff',
+                  background:'rgba(255,255,255,0.07)', outline:'none', transition:'border-color 0.2s',
+                }}
+                onFocus={e => (e.target.style.borderColor='rgba(245,151,19,0.6)')}
+                onBlur={e => (e.target.style.borderColor='rgba(255,255,255,0.15)')}
+              />
+              <button onClick={searchByPhone} disabled={phoneLoading} className="btn-gold"
+                style={{ padding:'13px 24px', fontSize:14, whiteSpace:'nowrap', opacity:phoneLoading ? 0.7 : 1 }}>
+                {phoneLoading ? '…' : 'Find →'}
+              </button>
+            </div>
+          )}
+          {(error || phoneError) && (
             <div style={{ background:'rgba(239,68,68,0.12)', border:'1px solid rgba(239,68,68,0.25)', borderRadius:10, padding:'10px 14px', color:'#fca5a5', fontSize:13, marginTop:14 }}>
-              ⚠️ {error}
+              ⚠️ {error || phoneError}
             </div>
           )}
         </div>
@@ -282,6 +338,49 @@ function TrackContent() {
                 </Link>
               </div>
             </div>
+          </div>
+        )}
+
+        {/* Phone search results */}
+        {phoneResults && (
+          <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
+            <div style={{ fontSize:13, color:'rgba(168,197,181,0.6)', marginBottom:4 }}>
+              Found {phoneResults.length} request{phoneResults.length !== 1 ? 's' : ''} for this number
+            </div>
+            {phoneResults.map(r => {
+              const stepIdx = STEPS.findIndex(s => s.key === r.status);
+              const step = stepIdx >= 0 ? STEPS[stepIdx] : null;
+              return (
+                <div key={r.id} style={{ background:'#fff', borderRadius:16, overflow:'hidden', boxShadow:'0 8px 32px rgba(0,0,0,0.2)', cursor:'pointer' }}
+                  onClick={() => { setSearchMode('id'); setInputId(`RJ-${String(r.id).padStart(5,'0')}`); search(String(r.id)); }}>
+                  <div style={{ background:'linear-gradient(135deg,#0F3D1F,#1B5E38)', padding:'14px 18px', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+                    <div style={{ fontSize:15, fontWeight:800, color:'#fff', letterSpacing:'-0.3px' }}>
+                      RJ-{String(r.id).padStart(5,'0')}
+                    </div>
+                    {step && (
+                      <div style={{ display:'inline-flex', alignItems:'center', gap:5, background:`${step.color}25`, border:`1px solid ${step.color}50`, borderRadius:50, padding:'4px 10px' }}>
+                        <span style={{ fontSize:12 }}>{step.icon}</span>
+                        <span style={{ color:step.color, fontSize:11, fontWeight:700 }}>{step.label}</span>
+                      </div>
+                    )}
+                  </div>
+                  <div style={{ padding:'12px 18px', display:'flex', justifyContent:'space-between', alignItems:'center', flexWrap:'wrap', gap:8 }}>
+                    <div>
+                      <div style={{ fontSize:14, fontWeight:600, color:'#0F3D1F' }}>{r.food_type}</div>
+                      <div style={{ fontSize:12, color:'#6B8A7A', marginTop:2 }}>
+                        {r.pickup_address} {r.approx_kg ? `· ${r.approx_kg} people` : ''}
+                      </div>
+                    </div>
+                    <div style={{ textAlign:'right' }}>
+                      <div style={{ fontSize:12, color:'#9ca3af' }}>
+                        {r.created_at ? new Date(r.created_at).toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'}) : ''}
+                      </div>
+                      <div style={{ fontSize:11, color:'#C4963C', fontWeight:600, marginTop:2 }}>Tap for details →</div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         )}
       </div>

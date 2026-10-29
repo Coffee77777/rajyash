@@ -311,6 +311,107 @@ export default function Home() {
         `}</style>
       </section>
 
+      {/* ══ TESTIMONIALS ════════════════════════════════════════ */}
+<section style={{ background: '#FDFBF7', padding: '96px 24px' }}>
+  <div style={{ maxWidth: 1100, margin: '0 auto' }}>
+    {/* Section header */}
+    <div style={{ textAlign: 'center', marginBottom: 56 }}>
+      <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: 'rgba(196,150,60,0.1)', border: '1px solid rgba(196,150,60,0.25)', borderRadius: 50, padding: '6px 18px', marginBottom: 18 }}>
+        <span style={{ color: '#C4963C', fontSize: 12, fontWeight: 700, letterSpacing: '0.5px' }}>VOICES FROM THE GROUND</span>
+      </div>
+      <h2 style={{ fontSize: 'clamp(28px,4vw,42px)', fontWeight: 900, color: '#0F3D1F', letterSpacing: '-1px', marginBottom: 14 }}>
+        What people are saying
+      </h2>
+      <p style={{ color: '#5A7A6A', fontSize: 16, maxWidth: 500, margin: '0 auto', lineHeight: 1.6 }}>
+        From the hotels that give to the families that receive — real words from our community.
+      </p>
+    </div>
+
+    {/* Testimonial cards */}
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 28 }}>
+      {[
+        {
+          quote: 'We used to throw away 50–60 meals every evening. With Rajyash, that same food reaches children within the hour. The pickup is always on time and completely hassle-free.',
+          name: 'Manish Bhai',
+          role: 'Manager, Grand Bhagwati Hotel',
+          initial: 'M',
+          color: '#1B5E38',
+        },
+        {
+          quote: 'Every evening our children ask — "are the Rajyash bhaiya coming today?" That question tells you everything. Warm, fresh food that arrives with dignity.',
+          name: 'Sister Kavita',
+          role: 'Coordinator, Bal Sahyog Centre',
+          initial: 'K',
+          color: '#C4963C',
+        },
+        {
+          quote: 'I get a tracking link on WhatsApp the moment my request is accepted. I know exactly when the driver leaves and when it is delivered. Very professional, very trustworthy.',
+          name: 'Rajesh Patel',
+          role: 'Owner, Swad Restaurant, Satellite',
+          initial: 'R',
+          color: '#6366f1',
+        },
+      ].map((t, i) => (
+        <div key={i} className="card-hover" style={{
+          background: '#fff',
+          border: '1.5px solid #EDE8DB',
+          borderRadius: 20,
+          padding: '36px 32px',
+          position: 'relative',
+          overflow: 'hidden',
+        }}>
+          {/* Quote mark */}
+          <div style={{
+            position: 'absolute', top: 20, right: 24,
+            fontSize: 80, lineHeight: 1, color: '#f0ebe5',
+            fontFamily: 'Georgia, serif', fontWeight: 900, userSelect: 'none',
+            pointerEvents: 'none',
+          }}>&ldquo;</div>
+
+          {/* Stars */}
+          <div style={{ display: 'flex', gap: 3, marginBottom: 20 }}>
+            {[...Array(5)].map((_, si) => (
+              <span key={si} style={{ color: '#C4963C', fontSize: 14 }}>★</span>
+            ))}
+          </div>
+
+          {/* Quote text */}
+          <p style={{
+            fontSize: 15, color: '#334155', lineHeight: 1.75,
+            marginBottom: 28, position: 'relative', zIndex: 1,
+            fontStyle: 'italic',
+          }}>
+            &ldquo;{t.quote}&rdquo;
+          </p>
+
+          {/* Author */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+            <div style={{
+              width: 44, height: 44, borderRadius: '50%',
+              background: `${t.color}18`,
+              border: `2px solid ${t.color}30`,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontSize: 16, fontWeight: 800, color: t.color, flexShrink: 0,
+            }}>
+              {t.initial}
+            </div>
+            <div>
+              <div style={{ fontSize: 14, fontWeight: 700, color: '#0F3D1F' }}>{t.name}</div>
+              <div style={{ fontSize: 12, color: '#9ca3af', marginTop: 1 }}>{t.role}</div>
+            </div>
+          </div>
+
+          {/* Bottom accent line */}
+          <div style={{
+            position: 'absolute', bottom: 0, left: 0, right: 0, height: 3,
+            background: `linear-gradient(90deg, ${t.color}40, transparent)`,
+          }}/>
+        </div>
+      ))}
+    </div>
+  </div>
+</section>
+
       {/* ══ HOW IT WORKS ══════════════════════════════════════════ */}
       <section style={{ background: '#F4EFE4', padding: '100px 24px' }}>
         <div style={{ maxWidth: 1000, margin: '0 auto' }}>
