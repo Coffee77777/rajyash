@@ -41,4 +41,31 @@ if ($method === 'GET') {
     jsonOut($stmt->fetchAll());
 }
 
+if ($method === 'POST') {
+    $me = requireAuth();
+    requireRole($me, ['admin']);
+
+    $body      = json_decode(file_get_contents('php://input'), true) ?? [];
+    $userId    = isset($body['user_id']) ? (int)$body['user_id'] : 0;
+    $vehicleNo = trim($body['vehicle_number'] ?? '');
+
+    if (!$userId) jsonOut(['error' => 'user_id required'], 400);
+
+    // Verify user exists and is a driver
+    $chk = $pdo->prepare("SELECT id FROM users WHERE id = ? AND role = 'driver' LIMIT 1");
+    $chk->execute([$userId]);
+    if (!$chk->fetch()) jsonOut(['error' => 'Driver user not found'], 404);
+
+    // Check if drivers record already exists
+    $ex = $pdo->prepare("SELECT id FROM drivers WHERE user_id = ? LIMIT 1");
+    $ex->execute([$userId]);
+    if ($ex->fetch()) jsonOut(['success' => true]); // already exists, idempotent
+
+    $pdo->prepare("INSERT INTO drivers (user_id, vehicle_number) VALUES (?,?)")
+        ->execute([$userId, $vehicleNo ?: null]);
+
+    auditLog($pdo, $me['sub'], 'create_driver', 'drivers', $userId, ['vehicle_number' => $vehicleNo]);
+    jsonOut(['success' => true], 201);
+}
+
 jsonOut(['error' => 'Method not allowed'], 405);

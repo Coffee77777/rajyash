@@ -81,6 +81,10 @@ export default function AdminPage() {
   const [notes, setNotes]           = useState<{id:number;note:string;created_at:string;admin_name:string}[]>([]);
   const [noteText, setNoteText]     = useState('');
   const [savingNote, setSavingNote] = useState(false);
+  const [driverModal, setDriverModal]   = useState(false);
+  const [driverForm, setDriverForm]     = useState({ name:'', phone:'', password:'', vehicle_number:'' });
+  const [driverSaving, setDriverSaving] = useState(false);
+  const [driverErr, setDriverErr]       = useState('');
 
   useEffect(() => {
     const t = sessionStorage.getItem('rj_admin_token');
@@ -156,6 +160,32 @@ export default function AdminPage() {
     a.href = URL.createObjectURL(new Blob([csv], { type:'text/csv' }));
     a.download = `rajyash-requests-${new Date().toISOString().slice(0,10)}.csv`;
     a.click();
+  }
+
+  async function addDriver() {
+    setDriverErr('');
+    if (!driverForm.name || !driverForm.phone || !driverForm.password) {
+      setDriverErr('Name, phone, and password are required'); return;
+    }
+    if (driverForm.password.length < 6) { setDriverErr('Password must be at least 6 characters'); return; }
+    setDriverSaving(true);
+    try {
+      // 1. Create user with driver role
+      const res = await fetch(`${API}/auth.php?action=register`, {
+        method:'POST', headers:{'Content-Type':'application/json', Authorization:`Bearer ${token}`},
+        body: JSON.stringify({ name: driverForm.name, phone: driverForm.phone, password: driverForm.password, role:'driver' }),
+      });
+      const d = await res.json();
+      if (!res.ok) { setDriverErr(d.error || 'Failed to create driver'); return; }
+      // 2. Create drivers record
+      await fetch(`${API}/drivers.php`, {
+        method:'POST', headers:{'Content-Type':'application/json', Authorization:`Bearer ${token}`},
+        body: JSON.stringify({ user_id: d.id, vehicle_number: driverForm.vehicle_number }),
+      });
+      setDriverModal(false);
+      setDriverForm({ name:'', phone:'', password:'', vehicle_number:'' });
+      fetchAll(token!, filterStatus);
+    } finally { setDriverSaving(false); }
   }
 
   async function doLogin(e: React.FormEvent) {
@@ -496,6 +526,18 @@ export default function AdminPage() {
         {/* ── DRIVERS TAB ── */}
         {activeTab === 'drivers' && (
           <div style={{ display:'flex', flexDirection:'column', gap:16 }}>
+            {/* Add Driver button */}
+            <div style={{ display:'flex', justifyContent:'flex-end', marginBottom:8 }}>
+              <button onClick={()=>{setDriverModal(true);setDriverErr('');}} style={{
+                padding:'9px 20px', borderRadius:10, border:'none',
+                background:'linear-gradient(135deg,#0F3D1F,#1B5E38)',
+                color:'#fff', fontSize:13, fontWeight:700, cursor:'pointer',
+                display:'flex', alignItems:'center', gap:6,
+                boxShadow:'0 4px 14px rgba(15,61,31,0.25)',
+              }}>
+                + Add Driver
+              </button>
+            </div>
             {driverStats.length === 0 ? (
               <div style={{ textAlign:'center', padding:60, background:'#fff', borderRadius:16, color:'#94a3b8' }}>
                 <div style={{ fontSize:40, marginBottom:12 }}>🚗</div>
@@ -994,6 +1036,57 @@ export default function AdminPage() {
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={lightbox} alt="Full view" style={{ maxWidth:'90vw', maxHeight:'88vh', objectFit:'contain', borderRadius:12 }}/>
           <button onClick={()=>setLightbox(null)} style={{ position:'absolute', top:20, right:20, background:'rgba(255,255,255,0.1)', border:'1px solid rgba(255,255,255,0.2)', color:'#fff', borderRadius:10, padding:'8px 16px', cursor:'pointer', fontSize:14, fontWeight:600 }}>✕ Close</button>
+        </div>
+      )}
+
+      {/* ── ADD DRIVER MODAL ── */}
+      {driverModal && (
+        <div style={{ position:'fixed', inset:0, background:'rgba(15,23,42,0.6)', backdropFilter:'blur(12px)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:200, padding:24 }}
+          onClick={()=>setDriverModal(false)}>
+          <div style={{ background:'#fff', borderRadius:24, padding:'36px', width:'100%', maxWidth:440, boxShadow:'0 40px 80px rgba(0,0,0,0.25)' }} onClick={e=>e.stopPropagation()}>
+            <div style={{ display:'flex', alignItems:'flex-start', gap:14, marginBottom:24 }}>
+              <div style={{ width:48, height:48, borderRadius:14, background:'#f0fdf4', border:'1.5px solid #bbf7d0', display:'flex', alignItems:'center', justifyContent:'center', fontSize:22, flexShrink:0 }}>🚗</div>
+              <div>
+                <h2 style={{ fontSize:18, fontWeight:800, color:'#0f172a', margin:0, letterSpacing:'-0.3px' }}>Add New Driver</h2>
+                <p style={{ color:'#64748b', fontSize:13, margin:'4px 0 0' }}>Driver can log in with phone + password</p>
+              </div>
+            </div>
+            <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
+              {[
+                { key:'name', label:'Full Name', placeholder:'e.g. Ramesh Patel', type:'text' },
+                { key:'phone', label:'Phone Number', placeholder:'e.g. 9876543210', type:'tel' },
+                { key:'password', label:'Password', placeholder:'Min. 6 characters', type:'password' },
+                { key:'vehicle_number', label:'Vehicle Number (optional)', placeholder:'e.g. GJ-01-AB-1234', type:'text' },
+              ].map(f => (
+                <div key={f.key}>
+                  <label style={{ display:'block', fontSize:11, fontWeight:700, color:'#64748b', textTransform:'uppercase', letterSpacing:'0.05em', marginBottom:6 }}>{f.label}</label>
+                  <input
+                    type={f.type} placeholder={f.placeholder}
+                    value={driverForm[f.key as keyof typeof driverForm]}
+                    onChange={e => setDriverForm(p => ({...p, [f.key]: e.target.value}))}
+                    style={{ ...inp }}
+                    onFocus={e=>{e.target.style.borderColor='#1B5E38';e.target.style.boxShadow='0 0 0 3px rgba(27,94,56,0.1)';}}
+                    onBlur={e=>{e.target.style.borderColor='#e2e8f0';e.target.style.boxShadow='none';}}
+                  />
+                </div>
+              ))}
+            </div>
+            {driverErr && (
+              <div style={{ background:'#fef2f2', border:'1px solid #fecaca', borderRadius:8, padding:'10px 14px', color:'#dc2626', fontSize:13, marginTop:14 }}>
+                ⚠️ {driverErr}
+              </div>
+            )}
+            <div style={{ display:'flex', gap:10, marginTop:24 }}>
+              <button onClick={()=>setDriverModal(false)} style={{ flex:1, padding:'12px', borderRadius:10, border:'1.5px solid #e2e8f0', background:'#fff', color:'#64748b', cursor:'pointer', fontSize:14, fontWeight:500 }}>Cancel</button>
+              <button onClick={addDriver} disabled={driverSaving} style={{
+                flex:2, padding:'12px', borderRadius:10, border:'none',
+                background:'linear-gradient(135deg,#0F3D1F,#1B5E38)',
+                color:'#fff', fontWeight:700, cursor:'pointer', fontSize:14,
+                boxShadow:'0 4px 16px rgba(10,46,30,0.25)',
+                opacity:driverSaving?0.7:1,
+              }}>{driverSaving ? 'Creating…' : 'Create Driver Account'}</button>
+            </div>
+          </div>
         </div>
       )}
 

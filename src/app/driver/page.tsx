@@ -44,6 +44,8 @@ export default function DriverPage() {
   const [loading, setLoading] = useState(false);
   const [advancing, setAdvancing] = useState<number | null>(null);
 
+  const seenTripIds = useRef<Set<number>>(new Set());
+
   // Pickup photo modal
   const [pickupModal, setPickupModal] = useState<Trip | null>(null);
   const [pickupPhoto, setPickupPhoto] = useState<File | null>(null);
@@ -70,7 +72,22 @@ export default function DriverPage() {
       const res = await fetch(`${API}/trips.php`, {
         headers: { Authorization: `Bearer ${tok}` },
       });
-      if (res.ok) setTrips(await res.json());
+      if (res.ok) {
+        const data = await res.json();
+        setTrips(data);
+        // Notify on new assigned trips
+        if (Notification.permission === 'granted') {
+          data.forEach((t: {id: number; status: string; donor_name?: string}) => {
+            if (t.status === 'assigned' && !seenTripIds.current.has(t.id)) {
+              new Notification('New trip assigned! 🚗', {
+                body: t.donor_name ? `Pickup from ${t.donor_name}` : 'A new pickup has been assigned to you.',
+                icon: '/rajyash-logo.png',
+              });
+            }
+          });
+        }
+        data.forEach((t: {id: number}) => seenTripIds.current.add(t.id));
+      }
     } finally {
       setLoading(false);
     }
@@ -78,6 +95,18 @@ export default function DriverPage() {
 
   useEffect(() => {
     if (token) fetchTrips(token);
+  }, [token, fetchTrips]);
+
+  useEffect(() => {
+    if (typeof Notification !== 'undefined' && Notification.permission === 'default') {
+      Notification.requestPermission();
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!token) return;
+    const iv = setInterval(() => fetchTrips(token), 30000);
+    return () => clearInterval(iv);
   }, [token, fetchTrips]);
 
   async function handleLogin(e: React.FormEvent) {
@@ -258,10 +287,10 @@ export default function DriverPage() {
           </div>
 
           {/* Bottom tagline */}
-          <div style={{ position: 'relative', zIndex: 1 }}>
-            <div style={{ width: 40, height: 2, background: 'linear-gradient(90deg,#C4963C,#D4A84B)', borderRadius: 2, marginBottom: 12 }}/>
-            <p style={{ color: 'rgba(168,197,181,0.45)', fontSize: 11, fontWeight: 600, letterSpacing: '1.5px', textTransform: 'uppercase' }}>
-              WE RISE BY LIFTING OTHERS
+          <div style={{ position: 'relative', zIndex: 1, display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div style={{ width: 24, height: 1, background: 'rgba(196,150,60,0.4)' }}/>
+            <p style={{ color: 'rgba(196,150,60,0.5)', fontSize: 12, fontWeight: 300, fontStyle: 'italic' }}>
+              We rise by lifting others
             </p>
           </div>
         </div>

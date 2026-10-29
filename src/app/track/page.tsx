@@ -9,6 +9,7 @@ const STEPS = [
   { key: 'requested',    label: 'Request Received',   desc: 'Your request is safely in our system.',       icon: '📋', color: '#6366f1' },
   { key: 'under_review', label: 'Under Review',        desc: 'Our team is reviewing your request now.',     icon: '🔍', color: '#f59e0b' },
   { key: 'assigned',     label: 'Driver Assigned',     desc: 'A driver has been assigned to your pickup.',  icon: '🧑‍✈️', color: '#8b5cf6' },
+  { key: 'accepted', label: 'Driver Accepted', desc: 'Driver has confirmed and is preparing to depart.', icon: '✅', color: '#6366f1' },
   { key: 'ride_started', label: 'On the Way',          desc: 'Driver is en route to your location.',        icon: '🚗', color: '#f97316' },
   { key: 'picked_up',    label: 'Food Picked Up',      desc: 'Driver has collected the food successfully.', icon: '📦', color: '#06b6d4' },
   { key: 'delivered',    label: 'Delivered',           desc: 'Food has reached the drop point.',            icon: '🏠', color: '#22c55e' },
@@ -140,6 +141,22 @@ function TrackContent() {
                   </div>
                 ))}
               </div>
+
+              {/* Driver info — show when assigned */}
+              {request.driver_name && (
+                <div style={{ marginTop:16, padding:'12px 16px', background:'rgba(255,255,255,0.07)', borderRadius:12, border:'1px solid rgba(255,255,255,0.1)', display:'flex', alignItems:'center', gap:12 }}>
+                  <div style={{ width:38, height:38, borderRadius:'50%', background:'linear-gradient(135deg,#C4963C,#D4A84B)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:16, flexShrink:0 }}>🚗</div>
+                  <div style={{ flex:1 }}>
+                    <div style={{ fontSize:11, color:'rgba(168,197,181,0.5)', fontWeight:600, letterSpacing:'1px', marginBottom:2 }}>ASSIGNED DRIVER</div>
+                    <div style={{ fontSize:14, fontWeight:700, color:'#fff' }}>{request.driver_name}</div>
+                  </div>
+                  {request.driver_phone && (
+                    <a href={`tel:${request.driver_phone}`} style={{ padding:'6px 14px', borderRadius:8, background:'rgba(196,150,60,0.2)', border:'1px solid rgba(196,150,60,0.35)', color:'#D4A84B', fontSize:12, fontWeight:700, textDecoration:'none', flexShrink:0 }}>
+                      Call Driver
+                    </a>
+                  )}
+                </div>
+              )}
             </div>
 
             {/* Timeline */}
@@ -236,6 +253,19 @@ function TrackContent() {
                   })}
                 </div>
               </div>
+
+              {/* Pickup photo */}
+              {request.pickup_photo && (
+                <div style={{ marginTop:24, paddingTop:20, borderTop:'1.5px solid #f0ebe5' }}>
+                  <div style={{ fontSize:10, fontWeight:700, letterSpacing:'2px', color:'#06b6d4', marginBottom:10, textTransform:'uppercase' }}>
+                    📦 Pickup Photo
+                  </div>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={'https://slipms.com/rajyash-api/' + request.pickup_photo} alt="Pickup confirmation"
+                    style={{ width:'100%', borderRadius:12, objectFit:'cover', maxHeight:240, display:'block', border:'2px solid #cffafe' }}
+                  />
+                </div>
+              )}
 
               {/* Footer action */}
               <div style={{ marginTop:32, paddingTop:24, borderTop:'1.5px solid #f0ebe5', display:'flex', justifyContent:'space-between', alignItems:'center', flexWrap:'wrap', gap:12 }}>
