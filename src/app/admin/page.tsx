@@ -235,8 +235,11 @@ export default function AdminPage() {
           </div>
         </div>
 
-        <div style={{ position:'absolute', bottom:28, color:'rgba(255,255,255,0.2)', fontSize:11, letterSpacing:'1px' }}>
-          WE RISE BY LIFTING OTHERS
+        <div style={{ position:'absolute', bottom:28, display:'flex', alignItems:'center', gap:10 }}>
+          <div style={{ width:24, height:1, background:'rgba(196,150,60,0.4)' }}/>
+          <p style={{ color:'rgba(196,150,60,0.5)', fontSize:12, fontWeight:300, fontStyle:'italic', margin:0 }}>
+            We rise by lifting others
+          </p>
         </div>
       </div>
 

@@ -119,16 +119,13 @@ export default function Home() {
 
           {/* Tag */}
           <div className="animate-fade-up delay-100" style={{
-            display: 'inline-flex', alignItems: 'center', gap: 8,
-            border: '1px solid rgba(196,150,60,0.5)',
-            background: 'rgba(196,150,60,0.12)',
-            backdropFilter: 'blur(8px)',
-            borderRadius: 2, padding: '6px 18px', marginBottom: 28,
+            display: 'inline-flex', alignItems: 'center', gap: 14, marginBottom: 32,
           }}>
-            <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#C4963C', boxShadow: '0 0 8px #C4963C' }}/>
-            <span style={{ color: '#D4A84B', fontSize: 11, fontWeight: 700, letterSpacing: '2px' }}>
-              WE RISE BY LIFTING OTHERS
+            <div style={{ width: 32, height: 1, background: 'linear-gradient(90deg, transparent, rgba(196,150,60,0.6))' }}/>
+            <span style={{ color: 'rgba(196,150,60,0.75)', fontSize: 13, fontWeight: 300, fontStyle: 'italic', letterSpacing: '0.02em' }}>
+              We rise by lifting others
             </span>
+            <div style={{ width: 32, height: 1, background: 'linear-gradient(90deg, rgba(196,150,60,0.6), transparent)' }}/>
           </div>
 
           <h1 className="animate-fade-up delay-200" style={{
@@ -217,8 +214,9 @@ export default function Home() {
                 }}/>
                 <div style={{ fontSize: 36, marginBottom: 14 }}>{s.icon}</div>
                 <div style={{
-                  fontSize: 'clamp(36px,4.5vw,54px)', fontWeight: 900,
-                  color: '#1B5E38', lineHeight: 1, letterSpacing: '-2px',
+                  fontSize: 'clamp(28px,3.5vw,44px)', fontWeight: 900,
+                  color: '#1B5E38', lineHeight: 1, letterSpacing: '-1px',
+                  whiteSpace: 'nowrap',
                 }}>
                   {s.refObj.count.toLocaleString('en-IN')}{s.suffix}
                 </div>
@@ -477,7 +475,7 @@ export default function Home() {
 
           <div style={{ borderTop: '1px solid rgba(255,255,255,0.06)', paddingTop: 28, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
             <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.2)' }}>© 2026 Rajyash Foundation. All rights reserved.</span>
-            <span style={{ fontSize: 12, color: 'rgba(196,150,60,0.4)', fontStyle: 'italic' }}>We Rise by Lifting Others 🌱</span>
+            <span style={{ fontSize: 12, color: 'rgba(196,150,60,0.35)', fontStyle: 'italic', fontWeight: 300 }}>We rise by lifting others</span>
           </div>
         </div>
       </footer>
