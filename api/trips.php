@@ -76,7 +76,7 @@ if ($method === 'GET') {
 }
 
 // ── Shared status-advance logic (used by both PUT and POST) ───────
-function advanceTripStatus(PDO $pdo, array $me, int $id, string $status, ?string $pickupPhotoPath): void {
+function advanceTripStatus(PDO $pdo, array $me, int $id, string $status, ?string $pickupPhotoPath, ?string $deliveryPhotoPath = null): void {
     $driverAllowed = ['ride_started', 'picked_up', 'delivered'];
     $adminAllowed  = ['assigned', 'accepted', 'ride_started', 'picked_up', 'delivered', 'cancelled'];
 
@@ -95,6 +95,9 @@ function advanceTripStatus(PDO $pdo, array $me, int $id, string $status, ?string
     if ($pickupPhotoPath) {
         $pdo->prepare("UPDATE trips SET status = ?, pickup_photo = ? WHERE id = ?")
             ->execute([$status, $pickupPhotoPath, $id]);
+    } elseif ($deliveryPhotoPath) {
+        $pdo->prepare("UPDATE trips SET status = ?, delivery_photo = ? WHERE id = ?")
+            ->execute([$status, $deliveryPhotoPath, $id]);
     } else {
         $pdo->prepare("UPDATE trips SET status = ? WHERE id = ?")->execute([$status, $id]);
     }
@@ -116,26 +119,27 @@ function advanceTripStatus(PDO $pdo, array $me, int $id, string $status, ?string
     jsonOut(['success' => true]);
 }
 
-// ── POST — pickup photo upload (PHP only populates $_FILES on POST) ─
+// ── POST — photo upload (PHP only populates $_FILES on POST) ────────
 if ($method === 'POST') {
     $id     = isset($_GET['id']) ? (int)$_GET['id'] : 0;
     $status = $_POST['status'] ?? $_GET['status'] ?? '';
     if (!$id || !$status) jsonOut(['error' => 'id and status required'], 400);
 
-    $pickupPhotoPath = null;
-    if (!empty($_FILES['pickup_photo']['tmp_name']) && $_FILES['pickup_photo']['error'] === UPLOAD_ERR_OK) {
-        $ext = strtolower(pathinfo($_FILES['pickup_photo']['name'], PATHINFO_EXTENSION));
-        if (in_array($ext, ['jpg','jpeg','png','webp'])) {
-            $uploadDir = __DIR__ . '/uploads/';
-            if (!is_dir($uploadDir)) mkdir($uploadDir, 0755, true);
-            $filename = 'pickup_' . uniqid('', true) . '.' . $ext;
-            if (move_uploaded_file($_FILES['pickup_photo']['tmp_name'], $uploadDir . $filename)) {
-                $pickupPhotoPath = 'uploads/' . $filename;
-            }
-        }
+    $uploadDir = __DIR__ . '/uploads/';
+    if (!is_dir($uploadDir)) mkdir($uploadDir, 0755, true);
+
+    function saveUpload(string $key, string $prefix, string $uploadDir): ?string {
+        if (empty($_FILES[$key]['tmp_name']) || $_FILES[$key]['error'] !== UPLOAD_ERR_OK) return null;
+        $ext = strtolower(pathinfo($_FILES[$key]['name'], PATHINFO_EXTENSION));
+        if (!in_array($ext, ['jpg','jpeg','png','webp'])) return null;
+        $filename = $prefix . uniqid('', true) . '.' . $ext;
+        return move_uploaded_file($_FILES[$key]['tmp_name'], $uploadDir . $filename) ? 'uploads/' . $filename : null;
     }
 
-    advanceTripStatus($pdo, $me, $id, $status, $pickupPhotoPath);
+    $pickupPhotoPath   = saveUpload('pickup_photo',   'pickup_',   $uploadDir);
+    $deliveryPhotoPath = saveUpload('delivery_photo', 'delivery_', $uploadDir);
+
+    advanceTripStatus($pdo, $me, $id, $status, $pickupPhotoPath, $deliveryPhotoPath);
 }
 
 // ── PUT — advance trip status without photo (JSON body) ───────────

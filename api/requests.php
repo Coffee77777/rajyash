@@ -18,7 +18,7 @@ if ($method === 'GET') {
         $stmt = $pdo->prepare("
             SELECT r.*, d.name AS donor_name, d.phone AS donor_phone,
                    d.address AS donor_address, u.name AS requester_name,
-                   t.pickup_photo, t.driver_id, drv.name AS driver_name, drv.phone AS driver_phone
+                   t.pickup_photo, t.delivery_photo, t.driver_id, drv.name AS driver_name, drv.phone AS driver_phone
             FROM requests r
             JOIN donors  d ON d.id = r.donor_id
             JOIN users   u ON u.id = r.requested_by
@@ -38,7 +38,7 @@ if ($method === 'GET') {
         $status = $_GET['status'] ?? '';
         $sql = "SELECT r.*, d.name AS donor_name, d.phone AS donor_phone,
                        d.address AS donor_address, u.name AS requester_name,
-                       t.pickup_photo, t.driver_id, drv.name AS driver_name, drv.phone AS driver_phone
+                       t.pickup_photo, t.delivery_photo, t.driver_id, drv.name AS driver_name, drv.phone AS driver_phone
                 FROM requests r
                 JOIN donors d ON d.id = r.donor_id
                 JOIN users  u ON u.id = r.requested_by

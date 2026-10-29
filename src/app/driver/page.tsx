@@ -51,6 +51,13 @@ export default function DriverPage() {
   const [pickupErr, setPickupErr] = useState('');
   const pickupFileRef = useRef<HTMLInputElement>(null);
 
+  // Delivery photo modal
+  const [deliveryModal, setDeliveryModal] = useState<Trip | null>(null);
+  const [deliveryPhoto, setDeliveryPhoto] = useState<File | null>(null);
+  const [deliveryPreview, setDeliveryPreview] = useState<string | null>(null);
+  const [deliveryErr, setDeliveryErr] = useState('');
+  const deliveryFileRef = useRef<HTMLInputElement>(null);
+
   useEffect(() => {
     const t = sessionStorage.getItem('rj_driver_token');
     const n = sessionStorage.getItem('rj_driver_name');
@@ -95,16 +102,25 @@ export default function DriverPage() {
     }
   }
 
-  async function advanceTrip(trip: Trip, photoFile?: File) {
+  async function advanceTrip(trip: Trip, photoFile?: File, photoType?: 'pickup' | 'delivery') {
     const action = NEXT_ACTION[trip.status];
     if (!action) return;
 
-    // Intercept picked_up — require photo
+    // Intercept picked_up — require pickup photo
     if (action.next === 'picked_up' && !photoFile) {
       setPickupModal(trip);
       setPickupPhoto(null);
       setPickupPreview(null);
       setPickupErr('');
+      return;
+    }
+
+    // Intercept delivered — require delivery photo
+    if (action.next === 'delivered' && !photoFile) {
+      setDeliveryModal(trip);
+      setDeliveryPhoto(null);
+      setDeliveryPreview(null);
+      setDeliveryErr('');
       return;
     }
 
@@ -115,7 +131,8 @@ export default function DriverPage() {
         // Use POST — PHP only populates $_FILES on POST, not PUT
         const fd = new FormData();
         fd.append('status', action.next);
-        fd.append('pickup_photo', photoFile);
+        const fieldName = photoType === 'delivery' ? 'delivery_photo' : 'pickup_photo';
+        fd.append(fieldName, photoFile);
         res = await fetch(`${API}/trips.php?id=${trip.id}&status=${action.next}`, {
           method: 'POST',
           headers: { Authorization: `Bearer ${token}` },
@@ -151,7 +168,25 @@ export default function DriverPage() {
     if (!pickupModal) return;
     if (!pickupPhoto) { setPickupErr('Please take or upload a photo of the food before marking as picked up.'); return; }
     setPickupErr('');
-    await advanceTrip(pickupModal, pickupPhoto);
+    await advanceTrip(pickupModal, pickupPhoto, 'pickup');
+  }
+
+  function handleDeliveryPhoto(file: File | null) {
+    if (!file) return;
+    setDeliveryPhoto(file);
+    const reader = new FileReader();
+    reader.onload = e => setDeliveryPreview(e.target?.result as string);
+    reader.readAsDataURL(file);
+  }
+
+  async function submitDelivery() {
+    if (!deliveryModal) return;
+    if (!deliveryPhoto) { setDeliveryErr('Please take or upload a photo confirming delivery.'); return; }
+    setDeliveryErr('');
+    await advanceTrip(deliveryModal, deliveryPhoto, 'delivery');
+    setDeliveryModal(null);
+    setDeliveryPhoto(null);
+    setDeliveryPreview(null);
   }
 
   function logout() {
@@ -375,6 +410,30 @@ export default function DriverPage() {
         </div>
       </div>
 
+      {/* ── STATS STRIP ── */}
+      {trips.length > 0 && (() => {
+        const now = new Date();
+        const thisMonth = trips.filter(t => t.status === 'delivered' && new Date(t.created_at).getMonth() === now.getMonth() && new Date(t.created_at).getFullYear() === now.getFullYear()).length;
+        const total = trips.filter(t => t.status === 'delivered').length;
+        const active = trips.filter(t => !['delivered','cancelled'].includes(t.status)).length;
+        return (
+          <div style={{ background:'#fff', borderBottom:'1px solid #e2e8f0', padding:'10px 16px' }}>
+            <div style={{ maxWidth:640, margin:'0 auto', display:'flex', gap:0 }}>
+              {[
+                { label:'Active', val: active, color:'#f97316', bg:'#fff7ed' },
+                { label:'This Month', val: thisMonth, color:'#6366f1', bg:'#eef2ff' },
+                { label:'Total Done', val: total, color:'#22c55e', bg:'#f0fdf4' },
+              ].map((s,i,arr) => (
+                <div key={s.label} style={{ flex:1, textAlign:'center', padding:'6px 0', borderRight: i<arr.length-1 ? '1px solid #f1f5f9' : 'none' }}>
+                  <div style={{ fontSize:20, fontWeight:900, color:s.color, lineHeight:1 }}>{s.val}</div>
+                  <div style={{ fontSize:10, color:'#94a3b8', fontWeight:600, marginTop:2, textTransform:'uppercase', letterSpacing:'0.5px' }}>{s.label}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      })()}
+
       <div style={{ maxWidth:640, margin:'0 auto', padding:'24px 16px 80px' }}>
         {loading ? (
           <div style={{ textAlign:'center', padding:'80px 0', color:'#94a3b8' }}>
@@ -452,16 +511,22 @@ export default function DriverPage() {
                           </div>
 
                           {/* Actions */}
-                          <div style={{ display:'flex', gap:10 }}>
+                          <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
                             <a href={`tel:${trip.donor_phone}`} style={{
-                              flex:1, padding:'13px', borderRadius:12, textDecoration:'none',
+                              flex:1, minWidth:70, padding:'12px 8px', borderRadius:12, textDecoration:'none',
                               background:'#f8fafc', border:'1.5px solid #e2e8f0',
-                              color:'#334155', fontSize:14, fontWeight:600,
-                              display:'flex', alignItems:'center', justifyContent:'center', gap:6,
+                              color:'#334155', fontSize:13, fontWeight:600,
+                              display:'flex', alignItems:'center', justifyContent:'center', gap:5,
                             }}>📞 Call</a>
+                            <a href={`https://maps.google.com/?q=${encodeURIComponent(trip.pickup_address)}`} target="_blank" rel="noopener noreferrer" style={{
+                              flex:1, minWidth:70, padding:'12px 8px', borderRadius:12, textDecoration:'none',
+                              background:'#f0fdf4', border:'1.5px solid #bbf7d0',
+                              color:'#166534', fontSize:13, fontWeight:600,
+                              display:'flex', alignItems:'center', justifyContent:'center', gap:5,
+                            }}>🗺 Navigate</a>
                             {action && (
                               <button onClick={()=>advanceTrip(trip)} disabled={advancing===trip.id} style={{
-                                flex:2, padding:'13px', borderRadius:12, border:'none',
+                                flex:2, minWidth:120, padding:'12px', borderRadius:12, border:'none',
                                 background: advancing===trip.id ? '#e2e8f0' : `linear-gradient(135deg,${action.color},${action.color}dd)`,
                                 color: advancing===trip.id ? '#94a3b8' : '#fff',
                                 fontWeight:800, fontSize:14, cursor: advancing===trip.id ? 'not-allowed' : 'pointer',
@@ -526,6 +591,82 @@ export default function DriverPage() {
           </>
         )}
       </div>
+
+      {/* ── DELIVERY PHOTO MODAL ── */}
+      {deliveryModal && (
+        <div style={{
+          position:'fixed', inset:0, background:'rgba(0,0,0,0.85)', backdropFilter:'blur(12px)',
+          display:'flex', alignItems:'flex-end', justifyContent:'center', zIndex:200,
+        }} onClick={()=>setDeliveryModal(null)}>
+          <div onClick={e=>e.stopPropagation()} style={{
+            background:'#fff', borderRadius:'24px 24px 0 0', padding:'28px 24px 40px',
+            width:'100%', maxWidth:520,
+          }}>
+            <div style={{ width:40, height:4, background:'#e2e8f0', borderRadius:2, margin:'0 auto 24px' }}/>
+            <div style={{ display:'flex', alignItems:'center', gap:12, marginBottom:20 }}>
+              <div style={{ width:44, height:44, borderRadius:12, background:'#f0fdf4', border:'1px solid #bbf7d0', display:'flex', alignItems:'center', justifyContent:'center', fontSize:20, flexShrink:0 }}>✅</div>
+              <div>
+                <div style={{ fontWeight:800, fontSize:17, color:'#0f172a' }}>Confirm Delivery</div>
+                <div style={{ fontSize:13, color:'#64748b', marginTop:2 }}>{deliveryModal.food_type} · {deliveryModal.donor_name}</div>
+              </div>
+            </div>
+            <div style={{ fontSize:13, color:'#64748b', lineHeight:1.6, marginBottom:20 }}>
+              Take a photo at the delivery location to confirm the food reached its destination.
+            </div>
+            <input ref={deliveryFileRef} type="file" accept="image/*" capture="environment" style={{ display:'none' }}
+              onChange={e=>handleDeliveryPhoto(e.target.files?.[0]??null)} />
+            {!deliveryPreview ? (
+              <div style={{ display:'flex', gap:10, marginBottom:20 }}>
+                <button onClick={()=>deliveryFileRef.current?.click()} style={{
+                  flex:1, padding:'16px 12px', borderRadius:14, border:'2px dashed #bbf7d0',
+                  background:'#f0fdf4', color:'#166534', fontSize:14, fontWeight:700, cursor:'pointer',
+                  display:'flex', flexDirection:'column', alignItems:'center', gap:8,
+                }}>
+                  <span style={{ fontSize:28 }}>📸</span>Take Photo
+                </button>
+                <button onClick={()=>{ if(deliveryFileRef.current){ deliveryFileRef.current.removeAttribute('capture'); deliveryFileRef.current.click(); }}} style={{
+                  flex:1, padding:'16px 12px', borderRadius:14, border:'2px dashed #e2e8f0',
+                  background:'#f8fafc', color:'#64748b', fontSize:14, fontWeight:600, cursor:'pointer',
+                  display:'flex', flexDirection:'column', alignItems:'center', gap:8,
+                }}>
+                  <span style={{ fontSize:28 }}>🖼️</span>Gallery
+                </button>
+              </div>
+            ) : (
+              <div style={{ position:'relative', borderRadius:14, overflow:'hidden', marginBottom:20, border:'2px solid #bbf7d0' }}>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={deliveryPreview} alt="Delivery" style={{ width:'100%', maxHeight:220, objectFit:'cover', display:'block' }}/>
+                <div style={{ position:'absolute', top:8, right:8 }}>
+                  <button onClick={()=>{setDeliveryPhoto(null);setDeliveryPreview(null);}} style={{
+                    background:'rgba(0,0,0,0.6)', border:'none', color:'#fff', borderRadius:8, padding:'5px 10px', fontSize:12, cursor:'pointer', fontWeight:600,
+                  }}>Retake</button>
+                </div>
+                <div style={{ background:'#f0fdf4', padding:'8px 14px', display:'flex', alignItems:'center', gap:6 }}>
+                  <span style={{ color:'#22c55e', fontSize:14 }}>✓</span>
+                  <span style={{ color:'#166534', fontSize:12, fontWeight:600 }}>Photo ready</span>
+                </div>
+              </div>
+            )}
+            {deliveryErr && <div style={{ background:'#fef2f2', border:'1px solid #fecaca', borderRadius:10, padding:'10px 14px', color:'#dc2626', fontSize:13, marginBottom:16 }}>⚠️ {deliveryErr}</div>}
+            <div style={{ display:'flex', gap:10 }}>
+              <button onClick={()=>setDeliveryModal(null)} style={{
+                flex:1, padding:'14px', borderRadius:12, border:'1.5px solid #e2e8f0',
+                background:'#fff', color:'#64748b', fontSize:14, fontWeight:600, cursor:'pointer',
+              }}>Cancel</button>
+              <button onClick={submitDelivery} disabled={advancing===deliveryModal.id} style={{
+                flex:2, padding:'14px', borderRadius:12, border:'none',
+                background: deliveryPhoto ? 'linear-gradient(135deg,#22c55e,#16a34a)' : '#f1f5f9',
+                color: deliveryPhoto ? '#fff' : '#94a3b8',
+                fontSize:14, fontWeight:800, cursor: deliveryPhoto ? 'pointer' : 'not-allowed',
+                boxShadow: deliveryPhoto ? '0 4px 20px rgba(34,197,94,0.35)' : 'none',
+                transition:'all 0.2s',
+              }}>
+                {advancing===deliveryModal.id ? 'Confirming…' : '✅ Confirm Delivery'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ── PICKUP PHOTO MODAL ── */}
       {pickupModal && (

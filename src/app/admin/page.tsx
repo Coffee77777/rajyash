@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import Image from 'next/image';
 
 const API = 'https://slipms.com/rajyash-api';
@@ -19,6 +19,7 @@ type Request = {
   requester_name: string;
   photo_path?: string;
   pickup_photo?: string;
+  delivery_photo?: string;
   driver_name?: string;
   driver_phone?: string;
   driver_id?: number;
@@ -75,6 +76,11 @@ export default function AdminPage() {
   const [detailModal, setDetail]    = useState<Request|null>(null);
   const [search, setSearch]         = useState('');
   const [activeTab, setActiveTab]   = useState<'requests'|'drivers'>('requests');
+  const [newCount, setNewCount]     = useState(0);
+  const lastCountRef                = useRef(0);
+  const [notes, setNotes]           = useState<{id:number;note:string;created_at:string;admin_name:string}[]>([]);
+  const [noteText, setNoteText]     = useState('');
+  const [savingNote, setSavingNote] = useState(false);
 
   useEffect(() => {
     const t = sessionStorage.getItem('rj_admin_token');
@@ -96,6 +102,61 @@ export default function AdminPage() {
   }, []);
 
   useEffect(() => { if (token) fetchAll(token, filterStatus); }, [token, filterStatus, fetchAll]);
+
+  // Auto-refresh every 60 s — show banner if new requests arrived
+  useEffect(() => {
+    if (!token) return;
+    const iv = setInterval(async () => {
+      try {
+        const res = await fetch(`${API}/requests.php`, { headers: { Authorization:`Bearer ${token}` } });
+        if (!res.ok) return;
+        const data = await res.json();
+        const incoming = data.filter((r: Request) => r.status === 'requested').length;
+        if (lastCountRef.current > 0 && incoming > lastCountRef.current) {
+          setNewCount(incoming - lastCountRef.current);
+        }
+        lastCountRef.current = incoming;
+      } catch { /* silent */ }
+    }, 60000);
+    return () => clearInterval(iv);
+  }, [token]);
+
+  async function fetchNotes(requestId: number) {
+    if (!token) return;
+    try {
+      const res = await fetch(`${API}/notes.php?request_id=${requestId}`, { headers: { Authorization:`Bearer ${token}` } });
+      if (res.ok) setNotes(await res.json());
+    } catch { /* silent */ }
+  }
+
+  async function addNote() {
+    if (!detailModal || !noteText.trim()) return;
+    setSavingNote(true);
+    try {
+      const res = await fetch(`${API}/notes.php?request_id=${detailModal.id}`, {
+        method:'POST', headers:{'Content-Type':'application/json', Authorization:`Bearer ${token}`},
+        body: JSON.stringify({ note: noteText.trim() }),
+      });
+      if (res.ok) { setNoteText(''); fetchNotes(detailModal.id); }
+    } finally { setSavingNote(false); }
+  }
+
+  function exportCSV() {
+    const headers = ['ID','Donor','Phone','Food Type','Serves','Pickup Address','Status','Driver','Ready By','Submitted On'];
+    const rows = requests.map(r => [
+      `RJ-${String(r.id).padStart(5,'0')}`,
+      r.donor_name, r.donor_phone||'', r.food_type,
+      r.approx_kg||'', r.pickup_address,
+      S_LABEL[r.status]||r.status, r.driver_name||'',
+      r.ready_by ? new Date(r.ready_by).toLocaleString('en-IN') : '',
+      r.created_at ? new Date(r.created_at).toLocaleString('en-IN') : '',
+    ].map(v => `"${String(v).replace(/"/g,'""')}"`));
+    const csv = [headers.join(','), ...rows.map(r=>r.join(','))].join('\n');
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([csv], { type:'text/csv' }));
+    a.download = `rajyash-requests-${new Date().toISOString().slice(0,10)}.csv`;
+    a.click();
+  }
 
   async function doLogin(e: React.FormEvent) {
     e.preventDefault(); setLoginErr(''); setLogging(true);
@@ -242,10 +303,10 @@ export default function AdminPage() {
   // ── DASHBOARD ────────────────────────────────────────────────────
   const filters = ['','requested','under_review','assigned','ride_started','picked_up','delivered','cancelled'];
   const stats = [
-    { label:'Total Requests', count:requests.length,                                               icon:'📋', color:'#6366f1', light:'#eef2ff' },
-    { label:'Pending Review',  count:requests.filter(r=>r.status==='requested').length,             icon:'⏳', color:'#f59e0b', light:'#fefce8' },
-    { label:'Active Trips',    count:requests.filter(r=>['assigned','accepted','ride_started','picked_up'].includes(r.status)).length, icon:'🚗', color:'#f97316', light:'#fff7ed' },
-    { label:'Delivered',       count:requests.filter(r=>r.status==='delivered'||r.status==='closed').length, icon:'✅', color:'#22c55e', light:'#f0fdf4' },
+    { label:'Total Requests', count:requests.length,                                               icon:'📋', color:'#6366f1', light:'#eef2ff', filterKey:'' },
+    { label:'Pending Review',  count:requests.filter(r=>r.status==='requested').length,             icon:'⏳', color:'#f59e0b', light:'#fefce8', filterKey:'requested' },
+    { label:'Active Trips',    count:requests.filter(r=>['assigned','accepted','ride_started','picked_up'].includes(r.status)).length, icon:'🚗', color:'#f97316', light:'#fff7ed', filterKey:'assigned' },
+    { label:'Delivered',       count:requests.filter(r=>r.status==='delivered'||r.status==='closed').length, icon:'✅', color:'#22c55e', light:'#f0fdf4', filterKey:'delivered' },
   ];
 
   // Search filter
@@ -343,14 +404,28 @@ export default function AdminPage() {
           </div>
         </div>
 
+        {/* ── NEW REQUEST BANNER ── */}
+        {newCount > 0 && (
+          <div style={{ background:'#fef9ec', border:'1.5px solid #fde68a', borderRadius:12, padding:'12px 16px', marginBottom:16, display:'flex', alignItems:'center', gap:12 }}>
+            <div style={{ width:8, height:8, borderRadius:'50%', background:'#f59e0b', boxShadow:'0 0 8px #f59e0b', flexShrink:0, animation:'pulse 1.5s infinite' }}/>
+            <span style={{ fontSize:13, fontWeight:700, color:'#92400e', flex:1 }}>🔔 {newCount} new request{newCount>1?'s':''} arrived since you loaded</span>
+            <button onClick={()=>{setNewCount(0);fetchAll(token!,filterStatus);}} style={{
+              padding:'6px 14px', borderRadius:8, border:'1.5px solid #f59e0b', background:'#fff',
+              color:'#92400e', fontSize:12, fontWeight:700, cursor:'pointer',
+            }}>Refresh Now</button>
+            <button onClick={()=>setNewCount(0)} style={{ background:'none', border:'none', color:'#b45309', cursor:'pointer', fontSize:16, padding:'0 4px' }}>✕</button>
+          </div>
+        )}
+
         {/* ── STATS ── */}
         <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(200px,1fr))', gap:16, marginBottom:28 }}>
           {stats.map(s => (
-            <div key={s.label} style={{
+            <div key={s.label} onClick={()=>{ if(s.filterKey){ setFilter(s.filterKey); setActiveTab('requests'); } }} style={{
               background:'#fff', borderRadius:16, padding:'20px 22px',
               boxShadow:'0 1px 4px rgba(0,0,0,0.06)', border:'1px solid #f1f5f9',
               display:'flex', alignItems:'center', gap:16,
               transition:'box-shadow 0.2s, transform 0.2s',
+              cursor: s.filterKey ? 'pointer' : 'default',
             }}
             onMouseEnter={e=>{e.currentTarget.style.boxShadow='0 4px 16px rgba(0,0,0,0.1)';e.currentTarget.style.transform='translateY(-2px)';}}
             onMouseLeave={e=>{e.currentTarget.style.boxShadow='0 1px 4px rgba(0,0,0,0.06)';e.currentTarget.style.transform='translateY(0)';}}>
@@ -360,6 +435,7 @@ export default function AdminPage() {
               <div>
                 <div style={{ fontSize:28, fontWeight:800, color:s.color, lineHeight:1, letterSpacing:'-1px' }}>{s.count}</div>
                 <div style={{ fontSize:12, color:'#94a3b8', marginTop:3, fontWeight:500 }}>{s.label}</div>
+                {s.filterKey && <div style={{ fontSize:10, color:s.color, marginTop:2, fontWeight:600 }}>Click to filter →</div>}
               </div>
             </div>
           ))}
@@ -396,7 +472,12 @@ export default function AdminPage() {
                   </button>
                 );
               })}
-              <div style={{ marginLeft:'auto' }}>
+              <div style={{ marginLeft:'auto', display:'flex', gap:8 }}>
+                <button onClick={exportCSV} style={{
+                  padding:'7px 14px', borderRadius:8, border:'1.5px solid #bbf7d0',
+                  background:'#f0fdf4', color:'#166534', cursor:'pointer', fontSize:12, fontWeight:600,
+                  display:'flex', alignItems:'center', gap:5,
+                }}>⬇ CSV</button>
                 <button onClick={()=>fetchAll(token!,filterStatus)} style={{
                   padding:'7px 16px', borderRadius:8, border:'1.5px solid #e2e8f0',
                   background:'#fff', color:'#64748b', cursor:'pointer', fontSize:13, fontWeight:500,
@@ -448,7 +529,7 @@ export default function AdminPage() {
                   {drv.reqs.map((req,i) => {
                     const sc = S_COLOR[req.status] || { bg:'#f9fafb', text:'#374151', dot:'#9ca3af' };
                     return (
-                      <div key={req.id} onClick={()=>setDetail(req)} style={{
+                      <div key={req.id} onClick={()=>{ setDetail(req); setNotes([]); setNoteText(''); fetchNotes(req.id); }} style={{
                         padding:'12px 20px', display:'flex', alignItems:'center', gap:12,
                         borderTop: i===0 ? 'none' : '1px solid #f8fafc',
                         cursor:'pointer', transition:'background 0.15s',
@@ -497,6 +578,7 @@ export default function AdminPage() {
               const sc = S_COLOR[req.status] || { bg:'#f9fafb', text:'#374151', dot:'#9ca3af' };
               const lc = S_LEFT[req.status] || '#e2e8f0';
               const thumbs = req.photo_path ? req.photo_path.split(',').map(p => UPLOADS + p) : [];
+              const isOverdue = ['requested','under_review'].includes(req.status) && req.ready_by && new Date(req.ready_by) < new Date();
               return (
                 <div key={req.id} style={{
                   background:'#fff', borderRadius:16,
@@ -508,7 +590,7 @@ export default function AdminPage() {
                   transition:'box-shadow 0.2s, transform 0.2s',
                   cursor:'pointer',
                 }}
-                onClick={()=>setDetail(req)}
+                onClick={()=>{ setDetail(req); setNotes([]); setNoteText(''); fetchNotes(req.id); }}
                 onMouseEnter={e=>{e.currentTarget.style.boxShadow='0 6px 20px rgba(0,0,0,0.1)';e.currentTarget.style.transform='translateY(-1px)';}}
                 onMouseLeave={e=>{e.currentTarget.style.boxShadow='0 1px 4px rgba(0,0,0,0.05)';e.currentTarget.style.transform='translateY(0)';}}>
 
@@ -538,6 +620,12 @@ export default function AdminPage() {
                       <div style={{ width:5, height:5, borderRadius:'50%', background:sc.dot, boxShadow:`0 0 4px ${sc.dot}` }}/>
                       <span style={{ fontSize:11, fontWeight:700, color:sc.text }}>{S_LABEL[req.status]||req.status}</span>
                     </div>
+                    {isOverdue && (
+                      <div style={{ marginTop:4, display:'inline-flex', alignItems:'center', gap:4, background:'#fef2f2', border:'1px solid #fecaca', borderRadius:20, padding:'2px 8px' }}>
+                        <span style={{ fontSize:10 }}>🔴</span>
+                        <span style={{ fontSize:10, fontWeight:800, color:'#dc2626' }}>OVERDUE</span>
+                      </div>
+                    )}
                   </div>
 
                   {/* Donor avatar + info */}
@@ -760,16 +848,26 @@ export default function AdminPage() {
 
                 {/* Pickup photo (taken by driver) */}
                 {req.pickup_photo && (
-                  <div style={{ marginBottom:20 }}>
-                    <div style={{ fontSize:11, fontWeight:700, letterSpacing:'1.5px', color:'#06b6d4', textTransform:'uppercase', marginBottom:10, display:'flex', alignItems:'center', gap:6 }}>
+                  <div style={{ marginBottom:16 }}>
+                    <div style={{ fontSize:11, fontWeight:700, letterSpacing:'1.5px', color:'#06b6d4', textTransform:'uppercase', marginBottom:8, display:'flex', alignItems:'center', gap:6 }}>
                       <span>📦</span> Pickup Photo · Driver
                     </div>
                     {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={UPLOADS + req.pickup_photo}
-                      alt="Driver pickup photo"
-                      onClick={()=>setLightbox(UPLOADS + req.pickup_photo!)}
-                      style={{ width:'100%', maxHeight:260, objectFit:'cover', borderRadius:14, cursor:'zoom-in', border:'2px solid #cffafe', display:'block' }}
+                    <img src={UPLOADS + req.pickup_photo} alt="Pickup" onClick={()=>setLightbox(UPLOADS + req.pickup_photo!)}
+                      style={{ width:'100%', maxHeight:220, objectFit:'cover', borderRadius:14, cursor:'zoom-in', border:'2px solid #cffafe', display:'block' }}
+                    />
+                  </div>
+                )}
+
+                {/* Delivery photo */}
+                {req.delivery_photo && (
+                  <div style={{ marginBottom:20 }}>
+                    <div style={{ fontSize:11, fontWeight:700, letterSpacing:'1.5px', color:'#22c55e', textTransform:'uppercase', marginBottom:8, display:'flex', alignItems:'center', gap:6 }}>
+                      <span>✅</span> Delivery Photo · Driver
+                    </div>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={UPLOADS + req.delivery_photo} alt="Delivery" onClick={()=>setLightbox(UPLOADS + req.delivery_photo!)}
+                      style={{ width:'100%', maxHeight:220, objectFit:'cover', borderRadius:14, cursor:'zoom-in', border:'2px solid #bbf7d0', display:'block' }}
                     />
                   </div>
                 )}
@@ -825,6 +923,35 @@ export default function AdminPage() {
                     </div>
                   );
                 })()}
+
+                {/* Notes */}
+                <div style={{ marginBottom:20 }}>
+                  <div style={{ fontSize:11, fontWeight:700, letterSpacing:'1.5px', color:'#94a3b8', textTransform:'uppercase', marginBottom:10 }}>Internal Notes</div>
+                  {notes.length > 0 && (
+                    <div style={{ display:'flex', flexDirection:'column', gap:8, marginBottom:12 }}>
+                      {notes.map(n => (
+                        <div key={n.id} style={{ background:'#f8fafc', borderRadius:10, padding:'10px 14px', borderLeft:'3px solid #e2e8f0' }}>
+                          <div style={{ fontSize:13, color:'#334155', lineHeight:1.5 }}>{n.note}</div>
+                          <div style={{ fontSize:11, color:'#94a3b8', marginTop:4 }}>{n.admin_name} · {new Date(n.created_at).toLocaleString('en-IN',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})}</div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  <div style={{ display:'flex', gap:8 }}>
+                    <input
+                      type="text" placeholder="Add a note… (e.g. called donor, ready at 6pm)"
+                      value={noteText} onChange={e=>setNoteText(e.target.value)}
+                      onKeyDown={e=>{ if(e.key==='Enter') addNote(); }}
+                      style={{ flex:1, padding:'9px 12px', border:'1.5px solid #e2e8f0', borderRadius:10, fontSize:13, fontFamily:'inherit', color:'#0f172a', background:'#fff', outline:'none' }}
+                    />
+                    <button onClick={addNote} disabled={savingNote||!noteText.trim()} style={{
+                      padding:'9px 16px', borderRadius:10, border:'none',
+                      background: noteText.trim() ? '#0f172a' : '#f1f5f9',
+                      color: noteText.trim() ? '#fff' : '#94a3b8',
+                      fontSize:13, fontWeight:700, cursor: noteText.trim()?'pointer':'not-allowed', flexShrink:0,
+                    }}>{savingNote ? '…' : 'Save'}</button>
+                  </div>
+                </div>
 
                 {/* Divider */}
                 <div style={{ borderTop:'1.5px solid #f0ebe5', margin:'4px 0 16px' }}/>
