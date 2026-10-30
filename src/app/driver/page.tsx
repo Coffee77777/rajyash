@@ -12,6 +12,8 @@ type Trip = {
   food_type: string;
   approx_kg: number | null;
   pickup_address: string;
+  pickup_lat?: number | null;
+  pickup_lng?: number | null;
   ready_by: string;
   donor_name: string;
   donor_phone: string;
@@ -180,7 +182,10 @@ export default function DriverPage() {
         setPickupPreview(null);
         fetchTrips(token!);
         if (action.next === 'ride_started') {
-          window.open(`https://maps.google.com/?q=${encodeURIComponent(trip.pickup_address)}`, '_blank');
+          const mapsUrl = (trip.pickup_lat && trip.pickup_lng)
+            ? `https://maps.google.com/?q=${trip.pickup_lat},${trip.pickup_lng}`
+            : `https://maps.google.com/?q=${encodeURIComponent(trip.pickup_address)}`;
+          window.open(mapsUrl, '_blank');
         }
       }
     } finally {
@@ -230,7 +235,7 @@ export default function DriverPage() {
       if (!action) return;
       const fd = new FormData();
       fd.append('status', action.next);
-      deliveryPhotos.forEach(p => fd.append('delivery_photo', p));
+      deliveryPhotos.forEach(p => fd.append('delivery_photo[]', p));
       const res = await fetch(`${API}/trips.php?id=${deliveryModal.id}&status=${action.next}`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}` },
@@ -577,7 +582,7 @@ export default function DriverPage() {
                               display:'flex', alignItems:'center', justifyContent:'center', gap:5,
                             }}>📞 Call</a>
                             {(trip.status === 'ride_started' || trip.status === 'picked_up') && (
-                              <a href={`https://maps.google.com/?q=${encodeURIComponent(trip.pickup_address)}`} target="_blank" rel="noopener noreferrer" style={{
+                              <a href={(trip.pickup_lat && trip.pickup_lng) ? `https://maps.google.com/?q=${trip.pickup_lat},${trip.pickup_lng}` : `https://maps.google.com/?q=${encodeURIComponent(trip.pickup_address)}`} target="_blank" rel="noopener noreferrer" style={{
                                 flex:1, minWidth:70, padding:'12px 8px', borderRadius:12, textDecoration:'none',
                                 background:'#f0fdf4', border:'1.5px solid #bbf7d0',
                                 color:'#166534', fontSize:13, fontWeight:600,

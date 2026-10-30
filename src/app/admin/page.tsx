@@ -1143,18 +1143,25 @@ export default function AdminPage() {
                   </div>
                 )}
 
-                {/* Delivery photo */}
-                {req.delivery_photo && (
-                  <div style={{ marginBottom:20 }}>
-                    <div style={{ fontSize:11, fontWeight:700, letterSpacing:'1.5px', color:'#22c55e', textTransform:'uppercase', marginBottom:8, display:'flex', alignItems:'center', gap:6 }}>
-                      <span>✅</span> Delivery Photo · Driver
+                {/* Delivery photos (comma-separated paths) */}
+                {req.delivery_photo && (() => {
+                  const photos = req.delivery_photo.split(',').map(p => p.trim()).filter(Boolean);
+                  return (
+                    <div style={{ marginBottom:20 }}>
+                      <div style={{ fontSize:11, fontWeight:700, letterSpacing:'1.5px', color:'#22c55e', textTransform:'uppercase', marginBottom:8, display:'flex', alignItems:'center', gap:6 }}>
+                        <span>✅</span> Delivery Photo{photos.length > 1 ? `s (${photos.length})` : ''} · Driver
+                      </div>
+                      <div style={{ display:'grid', gridTemplateColumns: photos.length > 1 ? '1fr 1fr' : '1fr', gap:8 }}>
+                        {photos.map((p, i) => (
+                          /* eslint-disable-next-line @next/next/no-img-element */
+                          <img key={i} src={UPLOADS + p} alt={`Delivery ${i+1}`} onClick={()=>setLightbox(UPLOADS + p)}
+                            style={{ width:'100%', maxHeight:220, objectFit:'cover', borderRadius:14, cursor:'zoom-in', border:'2px solid #bbf7d0', display:'block' }}
+                          />
+                        ))}
+                      </div>
                     </div>
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={UPLOADS + req.delivery_photo} alt="Delivery" onClick={()=>setLightbox(UPLOADS + req.delivery_photo!)}
-                      style={{ width:'100%', maxHeight:220, objectFit:'cover', borderRadius:14, cursor:'zoom-in', border:'2px solid #bbf7d0', display:'block' }}
-                    />
-                  </div>
-                )}
+                  );
+                })()}
 
                 {/* Info grid */}
                 <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'16px 24px', marginBottom:20 }}>

@@ -26,6 +26,8 @@ export default function GivePage() {
   const [mapAddr, setMapAddr]           = useState('');
   const [mapLoading, setMapLoading]     = useState(false);
   const [gpsLoading, setGpsLoading]     = useState(false);
+  const [pinLat, setPinLat]             = useState<number | null>(null);
+  const [pinLng, setPinLng]             = useState<number | null>(null);
   const mapDivRef  = useRef<HTMLDivElement>(null);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const leafletRef = useRef<any>(null);   // L instance
@@ -121,6 +123,8 @@ export default function GivePage() {
 
   const confirmPin = useCallback(() => {
     if (mapAddr) set('pickup_address', mapAddr);
+    setPinLat(latLngRef.current[0]);
+    setPinLng(latLngRef.current[1]);
     setMapOpen(false);
   }, [mapAddr]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -157,6 +161,8 @@ export default function GivePage() {
     try {
       const fd = new FormData();
       Object.entries(form).forEach(([k, v]) => v && fd.append(k, v));
+      if (pinLat !== null) fd.append('pickup_lat', String(pinLat));
+      if (pinLng !== null) fd.append('pickup_lng', String(pinLng));
       photos.forEach(p => fd.append('photos[]', p));
       const res = await fetch(`${API}/requests.php`, { method: 'POST', body: fd });
       const data = await res.json();
