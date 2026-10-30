@@ -75,7 +75,9 @@ export default function AdminPage() {
   const [lightbox, setLightbox]     = useState<string|null>(null);
   const [detailModal, setDetail]    = useState<Request|null>(null);
   const [search, setSearch]         = useState('');
-  const [activeTab, setActiveTab]   = useState<'requests'|'drivers'|'analytics'>('requests');
+  const [dateFrom, setDateFrom]     = useState('');
+  const [dateTo, setDateTo]         = useState('');
+  const [activeTab, setActiveTab]   = useState<'requests'|'drivers'|'analytics'|'deliveries'>('requests');
   const [analytics, setAnalytics]   = useState<Record<string,unknown>|null>(null);
   const [analyticsLoading, setAnalyticsLoading] = useState(false);
   const [newCount, setNewCount]     = useState(0);
@@ -95,10 +97,10 @@ export default function AdminPage() {
     if (t) { setToken(t); setAdminName(n || 'Admin'); }
   }, []);
 
-  const fetchAll = useCallback(async (tok: string, status: string) => {
+  const fetchAll = useCallback(async (tok: string) => {
     setLoading(true);
     try {
-      const url = `${API}/requests.php${status ? `?status=${status}` : ''}`;
+      const url = `${API}/requests.php`;
       const [rR, dR] = await Promise.all([
         fetch(url, { headers: { Authorization:`Bearer ${tok}` } }),
         fetch(`${API}/drivers.php`, { headers: { Authorization:`Bearer ${tok}` } }),
@@ -108,7 +110,7 @@ export default function AdminPage() {
     } finally { setLoading(false); }
   }, []);
 
-  useEffect(() => { if (token) fetchAll(token, filterStatus); }, [token, filterStatus, fetchAll]);
+  useEffect(() => { if (token) fetchAll(token); }, [token, fetchAll]);
 
   // Auto-refresh every 60 s — show banner if new requests arrived
   useEffect(() => {
@@ -167,8 +169,8 @@ export default function AdminPage() {
 
   async function addDriver() {
     setDriverErr('');
-    if (!driverForm.name || !driverForm.phone || !driverForm.password) {
-      setDriverErr('Name, phone, and password are required'); return;
+    if (!driverForm.name || !driverForm.phone || !driverForm.password || !driverForm.vehicle_number) {
+      setDriverErr('Name, phone, password, and vehicle number are required'); return;
     }
     if (driverForm.password.length < 6) { setDriverErr('Password must be at least 6 characters'); return; }
     setDriverSaving(true);
@@ -188,7 +190,7 @@ export default function AdminPage() {
       setDriverCreated({ name: driverForm.name, phone: driverForm.phone, password: driverForm.password });
       setDriverModal(false);
       setDriverForm({ name:'', phone:'', password:'', vehicle_number:'' });
-      fetchAll(token!, filterStatus);
+      fetchAll(token!);
     } finally { setDriverSaving(false); }
   }
 
@@ -225,7 +227,7 @@ export default function AdminPage() {
         method:'PATCH', headers:{'Content-Type':'application/json',Authorization:`Bearer ${token}`},
         body: JSON.stringify({driver_id:parseInt(assignDrv)}),
       });
-      if (res.ok) { setAssign(null); setAssignDrv(''); fetchAll(token!, filterStatus); }
+      if (res.ok) { setAssign(null); setAssignDrv(''); fetchAll(token!); }
     } finally { setAssigning(false); }
   }
 
@@ -237,7 +239,7 @@ export default function AdminPage() {
         method:'PUT', headers:{'Content-Type':'application/json',Authorization:`Bearer ${token}`},
         body: JSON.stringify({status:newStatus}),
       });
-      if (res.ok) { setStatusMod(null); setNewStatus(''); fetchAll(token!, filterStatus); }
+      if (res.ok) { setStatusMod(null); setNewStatus(''); fetchAll(token!); }
     } finally { setUpdating(false); }
   }
 
@@ -350,25 +352,39 @@ export default function AdminPage() {
   );
 
   // ── DASHBOARD ────────────────────────────────────────────────────
-  const filters = ['','requested','under_review','assigned','ride_started','picked_up','delivered','cancelled'];
+  const filters = ['','requested','under_review','assigned','accepted','ride_started','picked_up','delivered','closed','cancelled'];
   const stats = [
-    { label:'Total Requests', count:requests.length,                                               icon:'📋', color:'#6366f1', light:'#eef2ff', filterKey:'' },
-    { label:'Pending Review',  count:requests.filter(r=>r.status==='requested').length,             icon:'⏳', color:'#f59e0b', light:'#fefce8', filterKey:'requested' },
+    { label:'Total Active',    count:requests.filter(r=>!['delivered','closed','cancelled'].includes(r.status)).length, icon:'📋', color:'#6366f1', light:'#eef2ff', filterKey:'' },
+    { label:'Pending Review',  count:requests.filter(r=>r.status==='requested').length,  icon:'⏳', color:'#f59e0b', light:'#fefce8', filterKey:'requested' },
     { label:'Active Trips',    count:requests.filter(r=>['assigned','accepted','ride_started','picked_up'].includes(r.status)).length, icon:'🚗', color:'#f97316', light:'#fff7ed', filterKey:'assigned' },
-    { label:'Delivered',       count:requests.filter(r=>r.status==='delivered'||r.status==='closed').length, icon:'✅', color:'#22c55e', light:'#f0fdf4', filterKey:'delivered' },
+    { label:'Delivered',       count:requests.filter(r=>r.status==='delivered').length,  icon:'✅', color:'#22c55e', light:'#f0fdf4', filterKey:'delivered' },
+    { label:'Closed',          count:requests.filter(r=>r.status==='closed').length,     icon:'🔒', color:'#64748b', light:'#f9fafb', filterKey:'closed' },
   ];
 
-  // Search filter
+  // Client-side filter: status + date range + search
   const q = search.toLowerCase();
-  const filtered = requests.filter(r =>
-    !q ||
-    r.donor_name.toLowerCase().includes(q) ||
-    r.food_type.toLowerCase().includes(q) ||
-    r.pickup_address.toLowerCase().includes(q) ||
-    (r.donor_phone||'').includes(q) ||
-    (r.driver_name||'').toLowerCase().includes(q) ||
-    `rj-${String(r.id).padStart(5,'0')}`.includes(q)
-  );
+  const DONE = ['delivered','closed'];
+  const filtered = requests.filter(r => {
+    // In requests tab, hide completed (they live in deliveries tab)
+    if (activeTab === 'requests' && DONE.includes(r.status)) return false;
+    // In deliveries tab, show only completed
+    if (activeTab === 'deliveries' && !DONE.includes(r.status)) return false;
+    // Status filter pill
+    if (filterStatus && r.status !== filterStatus) return false;
+    // Date range
+    if (dateFrom && new Date(r.created_at) < new Date(dateFrom)) return false;
+    if (dateTo && new Date(r.created_at) > new Date(dateTo + 'T23:59:59')) return false;
+    // Text search
+    if (!q) return true;
+    return (
+      r.donor_name.toLowerCase().includes(q) ||
+      r.food_type.toLowerCase().includes(q) ||
+      r.pickup_address.toLowerCase().includes(q) ||
+      (r.donor_phone||'').includes(q) ||
+      (r.driver_name||'').toLowerCase().includes(q) ||
+      `rj-${String(r.id).padStart(5,'0')}`.includes(q)
+    );
+  });
 
   // Per-driver grouping for Drivers tab
   type DriverStat = { id: number; name: string; phone: string; total: number; delivered: number; active: number; reqs: Request[] };
@@ -387,26 +403,36 @@ export default function AdminPage() {
 
   return (
     <div style={{ minHeight:'100vh', background:'#f1f5f9', fontFamily:'Inter,system-ui,sans-serif', color:'#0f172a' }}>
+      <style>{`
+        @media (max-width: 640px) {
+          .rj-admin-name-col { display: none !important; }
+          .rj-header-subtitle { display: none !important; }
+          .rj-tab-label { font-size: 11px !important; padding: 7px 10px !important; }
+          .rj-page-pad { padding: 16px 12px !important; }
+          .rj-stats-grid { grid-template-columns: repeat(2, 1fr) !important; }
+          .rj-header-inner { padding: 0 12px !important; }
+        }
+      `}</style>
 
       {/* ── HEADER ── */}
       <div style={{
         background:'#fff', borderBottom:'1px solid #e2e8f0',
-        padding:'0 32px', height:64,
+        padding:'0 16px', height:64,
         display:'flex', alignItems:'center', justifyContent:'space-between',
         position:'sticky', top:0, zIndex:100,
         boxShadow:'0 1px 3px rgba(0,0,0,0.06)',
       }}>
-        <div style={{ display:'flex', alignItems:'center', gap:14 }}>
+        <div className="rj-header-inner" style={{ display:'flex', alignItems:'center', gap:14 }}>
           <Image src="/rajyash-logo.png" alt="Rajyash Foundation" width={130} height={44} style={{ objectFit:'contain' }} priority />
           <div style={{ width:1, height:28, background:'#e2e8f0' }}/>
           <div>
             <div style={{ fontWeight:700, color:'#0f172a', fontSize:14, lineHeight:1.1 }}>Admin Portal</div>
-            <div style={{ fontSize:11, color:'#94a3b8' }}>Food Rescue Dashboard</div>
+            <div className="rj-header-subtitle" style={{ fontSize:11, color:'#94a3b8' }}>Food Rescue Dashboard</div>
           </div>
         </div>
 
         <div style={{ display:'flex', alignItems:'center', gap:12 }}>
-          <div style={{ textAlign:'right' }}>
+          <div className="rj-admin-name-col" style={{ textAlign:'right' }}>
             <div style={{ fontSize:13, fontWeight:600, color:'#334155' }}>{adminName}</div>
             <div style={{ fontSize:11, color:'#94a3b8' }}>Administrator</div>
           </div>
@@ -425,21 +451,21 @@ export default function AdminPage() {
         </div>
       </div>
 
-      <div style={{ maxWidth:1200, margin:'0 auto', padding:'28px 24px' }}>
+      <div className="rj-page-pad" style={{ maxWidth:1200, margin:'0 auto', padding:'28px 24px' }}>
 
         {/* ── PAGE TITLE + TABS ── */}
         <div style={{ marginBottom:24, display:'flex', alignItems:'center', justifyContent:'space-between', flexWrap:'wrap', gap:12 }}>
           <div>
             <h1 style={{ fontSize:24, fontWeight:800, color:'#0f172a', letterSpacing:'-0.5px', marginBottom:4 }}>
-              {activeTab === 'requests' ? 'Requests Dashboard' : activeTab === 'drivers' ? 'Driver Deliveries' : 'Analytics'}
+              {activeTab === 'requests' ? 'Requests Dashboard' : activeTab === 'deliveries' ? 'All Deliveries' : activeTab === 'drivers' ? 'Driver Deliveries' : 'Analytics'}
             </h1>
             <p style={{ fontSize:14, color:'#64748b' }}>
-              {activeTab === 'requests' ? 'Manage and track all food pickup requests' : activeTab === 'drivers' ? 'Per-driver delivery history and stats' : 'Impact metrics and operational data'}
+              {activeTab === 'requests' ? 'Active and pending food pickup requests' : activeTab === 'deliveries' ? 'Completed and closed deliveries' : activeTab === 'drivers' ? 'Per-driver delivery history and stats' : 'Impact metrics and operational data'}
             </p>
           </div>
           <div style={{ display:'flex', gap:6 }}>
-            {(['requests','drivers','analytics'] as const).map(tab => (
-              <button key={tab} onClick={()=>setActiveTab(tab)} style={{
+            {(['requests','deliveries','drivers','analytics'] as const).map(tab => (
+              <button key={tab} onClick={()=>setActiveTab(tab)} className="rj-tab-label" style={{
                 padding:'8px 20px', borderRadius:10, border:'1.5px solid',
                 borderColor: activeTab===tab ? '#1B5E38' : '#e2e8f0',
                 background: activeTab===tab ? '#f0fdf4' : '#fff',
@@ -447,7 +473,7 @@ export default function AdminPage() {
                 fontSize:13, cursor:'pointer', fontWeight: activeTab===tab ? 700 : 500,
                 transition:'all 0.15s',
               }}>
-                {tab === 'requests' ? '📋 Requests' : tab === 'drivers' ? '🚗 Drivers' : '📊 Analytics'}
+                {tab === 'requests' ? '📋 Requests' : tab === 'deliveries' ? '📦 All Deliveries' : tab === 'drivers' ? '🚗 Drivers' : '📊 Analytics'}
               </button>
             ))}
           </div>
@@ -458,7 +484,7 @@ export default function AdminPage() {
           <div style={{ background:'#fef9ec', border:'1.5px solid #fde68a', borderRadius:12, padding:'12px 16px', marginBottom:16, display:'flex', alignItems:'center', gap:12 }}>
             <div style={{ width:8, height:8, borderRadius:'50%', background:'#f59e0b', boxShadow:'0 0 8px #f59e0b', flexShrink:0, animation:'pulse 1.5s infinite' }}/>
             <span style={{ fontSize:13, fontWeight:700, color:'#92400e', flex:1 }}>🔔 {newCount} new request{newCount>1?'s':''} arrived since you loaded</span>
-            <button onClick={()=>{setNewCount(0);fetchAll(token!,filterStatus);}} style={{
+            <button onClick={()=>{setNewCount(0);fetchAll(token!);}} style={{
               padding:'6px 14px', borderRadius:8, border:'1.5px solid #f59e0b', background:'#fff',
               color:'#92400e', fontSize:12, fontWeight:700, cursor:'pointer',
             }}>Refresh Now</button>
@@ -467,9 +493,15 @@ export default function AdminPage() {
         )}
 
         {/* ── STATS ── */}
-        <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(200px,1fr))', gap:16, marginBottom:28 }}>
+        <div className="rj-stats-grid" style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(200px,1fr))', gap:16, marginBottom:28 }}>
           {stats.map(s => (
-            <div key={s.label} onClick={()=>{ if(s.filterKey){ setFilter(s.filterKey); setActiveTab('requests'); } }} style={{
+            <div key={s.label} onClick={()=>{
+            if (s.filterKey === 'delivered' || s.filterKey === 'closed') {
+              setFilter(s.filterKey); setActiveTab('deliveries');
+            } else if (s.filterKey) {
+              setFilter(s.filterKey); setActiveTab('requests');
+            }
+          }} style={{
               background:'#fff', borderRadius:16, padding:'20px 22px',
               boxShadow:'0 1px 4px rgba(0,0,0,0.06)', border:'1px solid #f1f5f9',
               display:'flex', alignItems:'center', gap:16,
@@ -491,7 +523,7 @@ export default function AdminPage() {
         </div>
 
         {/* ── SEARCH + FILTERS ── */}
-        {activeTab === 'requests' && (
+        {(activeTab === 'requests' || activeTab === 'deliveries') && (
           <>
             <div style={{ background:'#fff', borderRadius:14, padding:'12px 16px', marginBottom:12, boxShadow:'0 1px 4px rgba(0,0,0,0.05)', border:'1px solid #f1f5f9', display:'flex', alignItems:'center', gap:10 }}>
               <span style={{ fontSize:16 }}>🔍</span>
@@ -503,37 +535,48 @@ export default function AdminPage() {
               {search && <button onClick={()=>setSearch('')} style={{ background:'none', border:'none', color:'#94a3b8', cursor:'pointer', fontSize:16, padding:'0 4px' }}>✕</button>}
             </div>
 
-            <div style={{ background:'#fff', borderRadius:14, padding:'14px 16px', marginBottom:20, boxShadow:'0 1px 4px rgba(0,0,0,0.05)', border:'1px solid #f1f5f9', display:'flex', alignItems:'center', gap:8, flexWrap:'wrap' }}>
-              <span style={{ fontSize:12, color:'#94a3b8', fontWeight:500, marginRight:4 }}>Filter</span>
-              {filters.map(f => {
-                const active = filterStatus === f;
-                const col = f ? S_COLOR[f] : null;
-                return (
-                  <button key={f||'all'} onClick={()=>setFilter(f)} style={{
-                    padding:'5px 14px', borderRadius:20, border:'1.5px solid',
-                    borderColor: active ? (col?.dot||'#0A2E1E') : '#e2e8f0',
-                    background: active ? (col?.bg||'#f0fdf4') : '#fff',
-                    color: active ? (col?.text||'#166534') : '#64748b',
-                    fontSize:12, cursor:'pointer', fontWeight: active?700:500,
-                    transition:'all 0.15s',
+            <div style={{ background:'#fff', borderRadius:14, padding:'14px 16px', marginBottom:20, boxShadow:'0 1px 4px rgba(0,0,0,0.05)', border:'1px solid #f1f5f9', display:'flex', flexDirection:'column', gap:0 }}>
+              <div style={{ display:'flex', alignItems:'center', gap:8, flexWrap:'wrap' }}>
+                <span style={{ fontSize:12, color:'#94a3b8', fontWeight:500, marginRight:4 }}>Filter</span>
+                {filters.map(f => {
+                  const active = filterStatus === f;
+                  const col = f ? S_COLOR[f] : null;
+                  return (
+                    <button key={f||'all'} onClick={()=>setFilter(f)} style={{
+                      padding:'5px 14px', borderRadius:20, border:'1.5px solid',
+                      borderColor: active ? (col?.dot||'#0A2E1E') : '#e2e8f0',
+                      background: active ? (col?.bg||'#f0fdf4') : '#fff',
+                      color: active ? (col?.text||'#166534') : '#64748b',
+                      fontSize:12, cursor:'pointer', fontWeight: active?700:500,
+                      transition:'all 0.15s',
+                    }}>
+                      {f ? S_LABEL[f] : 'All'}
+                    </button>
+                  );
+                })}
+                <div style={{ marginLeft:'auto', display:'flex', gap:8 }}>
+                  <button onClick={exportCSV} style={{
+                    padding:'7px 14px', borderRadius:8, border:'1.5px solid #bbf7d0',
+                    background:'#f0fdf4', color:'#166534', cursor:'pointer', fontSize:12, fontWeight:600,
+                    display:'flex', alignItems:'center', gap:5,
+                  }}>⬇ CSV</button>
+                  <button onClick={()=>fetchAll(token!)} style={{
+                    padding:'7px 16px', borderRadius:8, border:'1.5px solid #e2e8f0',
+                    background:'#fff', color:'#64748b', cursor:'pointer', fontSize:13, fontWeight:500,
+                    display:'flex', alignItems:'center', gap:6,
                   }}>
-                    {f ? S_LABEL[f] : 'All'}
+                    <span style={{ fontSize:14 }}>↻</span> Refresh
                   </button>
-                );
-              })}
-              <div style={{ marginLeft:'auto', display:'flex', gap:8 }}>
-                <button onClick={exportCSV} style={{
-                  padding:'7px 14px', borderRadius:8, border:'1.5px solid #bbf7d0',
-                  background:'#f0fdf4', color:'#166534', cursor:'pointer', fontSize:12, fontWeight:600,
-                  display:'flex', alignItems:'center', gap:5,
-                }}>⬇ CSV</button>
-                <button onClick={()=>fetchAll(token!,filterStatus)} style={{
-                  padding:'7px 16px', borderRadius:8, border:'1.5px solid #e2e8f0',
-                  background:'#fff', color:'#64748b', cursor:'pointer', fontSize:13, fontWeight:500,
-                  display:'flex', alignItems:'center', gap:6,
-                }}>
-                  <span style={{ fontSize:14 }}>↻</span> Refresh
-                </button>
+                </div>
+              </div>
+              <div style={{ width:'100%', display:'flex', alignItems:'center', gap:8, marginTop:10, paddingTop:10, borderTop:'1px solid #f1f5f9' }}>
+                <span style={{ fontSize:11, color:'#94a3b8', fontWeight:500, whiteSpace:'nowrap' }}>Date</span>
+                <input type="date" value={dateFrom} onChange={e=>setDateFrom(e.target.value)}
+                  style={{ flex:1, padding:'5px 10px', border:'1.5px solid #e2e8f0', borderRadius:8, fontSize:12, color:'#334155', background:'#fff', fontFamily:'inherit', outline:'none' }}/>
+                <span style={{ fontSize:11, color:'#94a3b8' }}>to</span>
+                <input type="date" value={dateTo} onChange={e=>setDateTo(e.target.value)}
+                  style={{ flex:1, padding:'5px 10px', border:'1.5px solid #e2e8f0', borderRadius:8, fontSize:12, color:'#334155', background:'#fff', fontFamily:'inherit', outline:'none' }}/>
+                {(dateFrom||dateTo) && <button onClick={()=>{setDateFrom('');setDateTo('');}} style={{ padding:'5px 10px', borderRadius:8, border:'1.5px solid #e2e8f0', background:'#fff', color:'#94a3b8', cursor:'pointer', fontSize:12 }}>✕ Clear</button>}
               </div>
             </div>
           </>
@@ -570,7 +613,7 @@ export default function AdminPage() {
                           fetch(`${API}/drivers.php?id=${drv.id}`, {
                             method:'PUT', headers:{'Content-Type':'application/json', Authorization:`Bearer ${token}`},
                             body: JSON.stringify({ vehicle_number: newVehicle }),
-                          }).then(() => fetchAll(token!, filterStatus));
+                          }).then(() => fetchAll(token!));
                         }}
                         style={{ padding:'6px 12px', borderRadius:8, border:'1.5px solid #e2e8f0', background:'#fff', color:'#64748b', fontSize:12, cursor:'pointer', fontWeight:500, flexShrink:0 }}>
                         Edit
@@ -581,7 +624,7 @@ export default function AdminPage() {
                           fetch(`${API}/drivers.php?id=${drv.id}`, {
                             method:'PUT', headers:{'Content-Type':'application/json', Authorization:`Bearer ${token}`},
                             body: JSON.stringify({ is_active: false }),
-                          }).then(() => fetchAll(token!, filterStatus));
+                          }).then(() => fetchAll(token!));
                         }}
                         style={{ padding:'6px 12px', borderRadius:8, border:'1.5px solid #fecaca', background:'#fef2f2', color:'#dc2626', fontSize:12, cursor:'pointer', fontWeight:600, flexShrink:0 }}>
                         Deactivate
@@ -695,7 +738,7 @@ export default function AdminPage() {
                   {[
                     { label:'This Month', value:tm.total??0, icon:'📋', color:'#6366f1', light:'#eef2ff' },
                     { label:'Delivered', value:tm.delivered??0, icon:'✅', color:'#22c55e', light:'#f0fdf4' },
-                    { label:'KG Rescued', value:Math.round(Number(tm.kg_rescued??0)), icon:'🍱', color:'#f59e0b', light:'#fefce8' },
+                    { label:'People Served', value:Math.round(Number(tm.kg_rescued??0)), icon:'🙏', color:'#f59e0b', light:'#fefce8' },
                     { label:'Active Now', value:tm.active??0, icon:'🚗', color:'#f97316', light:'#fff7ed' },
                   ].map(s => (
                     <div key={s.label} style={{ background:'#fff', borderRadius:16, padding:'20px 22px', boxShadow:'0 1px 4px rgba(0,0,0,0.06)', border:'1px solid #f1f5f9', display:'flex', alignItems:'center', gap:14 }}>
@@ -802,7 +845,7 @@ export default function AdminPage() {
         )}
 
         {/* ── REQUEST CARDS ── */}
-        {activeTab === 'requests' && (loading ? (
+        {(activeTab === 'requests' || activeTab === 'deliveries') && (loading ? (
           <div style={{ textAlign:'center', padding:80, color:'#94a3b8' }}>
             <div style={{ fontSize:32, marginBottom:12 }}>⏳</div>
             <div style={{ fontSize:14 }}>Loading requests…</div>
@@ -1296,7 +1339,7 @@ export default function AdminPage() {
                 { key:'name', label:'Full Name', placeholder:'e.g. Ramesh Patel', type:'text' },
                 { key:'phone', label:'Phone Number', placeholder:'e.g. 9876543210', type:'tel' },
                 { key:'password', label:'Password', placeholder:'Min. 6 characters', type:'password' },
-                { key:'vehicle_number', label:'Vehicle Number (optional)', placeholder:'e.g. GJ-01-AB-1234', type:'text' },
+                { key:'vehicle_number', label:'Vehicle Number', placeholder:'e.g. GJ-01-AB-1234', type:'text' },
               ].map(f => (
                 <div key={f.key}>
                   <label style={{ display:'block', fontSize:11, fontWeight:700, color:'#64748b', textTransform:'uppercase', letterSpacing:'0.05em', marginBottom:6 }}>{f.label}</label>

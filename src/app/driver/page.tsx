@@ -55,8 +55,8 @@ export default function DriverPage() {
 
   // Delivery photo modal
   const [deliveryModal, setDeliveryModal] = useState<Trip | null>(null);
-  const [deliveryPhoto, setDeliveryPhoto] = useState<File | null>(null);
-  const [deliveryPreview, setDeliveryPreview] = useState<string | null>(null);
+  const [deliveryPhotos, setDeliveryPhotos] = useState<File[]>([]);
+  const [deliveryPreviews, setDeliveryPreviews] = useState<string[]>([]);
   const [deliveryErr, setDeliveryErr] = useState('');
   const deliveryFileRef = useRef<HTMLInputElement>(null);
 
@@ -147,8 +147,8 @@ export default function DriverPage() {
     // Intercept delivered — require delivery photo
     if (action.next === 'delivered' && !photoFile) {
       setDeliveryModal(trip);
-      setDeliveryPhoto(null);
-      setDeliveryPreview(null);
+      setDeliveryPhotos([]);
+      setDeliveryPreviews([]);
       setDeliveryErr('');
       return;
     }
@@ -179,6 +179,9 @@ export default function DriverPage() {
         setPickupPhoto(null);
         setPickupPreview(null);
         fetchTrips(token!);
+        if (action.next === 'ride_started') {
+          window.open(`https://maps.google.com/?q=${encodeURIComponent(trip.pickup_address)}`, '_blank');
+        }
       }
     } finally {
       setAdvancing(null);
@@ -202,20 +205,46 @@ export default function DriverPage() {
 
   function handleDeliveryPhoto(file: File | null) {
     if (!file) return;
-    setDeliveryPhoto(file);
+    if (deliveryPhotos.length >= 3) return;
     const reader = new FileReader();
-    reader.onload = e => setDeliveryPreview(e.target?.result as string);
+    reader.onload = e => {
+      setDeliveryPhotos(prev => [...prev, file]);
+      setDeliveryPreviews(prev => [...prev, e.target?.result as string]);
+    };
     reader.readAsDataURL(file);
+  }
+
+  function removeDeliveryPhoto(index: number) {
+    setDeliveryPhotos(prev => prev.filter((_, i) => i !== index));
+    setDeliveryPreviews(prev => prev.filter((_, i) => i !== index));
   }
 
   async function submitDelivery() {
     if (!deliveryModal) return;
-    if (!deliveryPhoto) { setDeliveryErr('Please take or upload a photo confirming delivery.'); return; }
+    if (deliveryPhotos.length === 0) { setDeliveryErr('Please take or upload at least one photo confirming delivery.'); return; }
     setDeliveryErr('');
-    await advanceTrip(deliveryModal, deliveryPhoto, 'delivery');
-    setDeliveryModal(null);
-    setDeliveryPhoto(null);
-    setDeliveryPreview(null);
+    // Pass the first photo to advanceTrip; the rest will be appended in formData
+    setAdvancing(deliveryModal.id);
+    try {
+      const action = NEXT_ACTION[deliveryModal.status];
+      if (!action) return;
+      const fd = new FormData();
+      fd.append('status', action.next);
+      deliveryPhotos.forEach(p => fd.append('delivery_photo', p));
+      const res = await fetch(`${API}/trips.php?id=${deliveryModal.id}&status=${action.next}`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+        body: fd,
+      });
+      if (res.ok) {
+        setDeliveryModal(null);
+        setDeliveryPhotos([]);
+        setDeliveryPreviews([]);
+        fetchTrips(token!);
+      }
+    } finally {
+      setAdvancing(null);
+    }
   }
 
   function logout() {
@@ -547,12 +576,14 @@ export default function DriverPage() {
                               color:'#334155', fontSize:13, fontWeight:600,
                               display:'flex', alignItems:'center', justifyContent:'center', gap:5,
                             }}>📞 Call</a>
-                            <a href={`https://maps.google.com/?q=${encodeURIComponent(trip.pickup_address)}`} target="_blank" rel="noopener noreferrer" style={{
-                              flex:1, minWidth:70, padding:'12px 8px', borderRadius:12, textDecoration:'none',
-                              background:'#f0fdf4', border:'1.5px solid #bbf7d0',
-                              color:'#166534', fontSize:13, fontWeight:600,
-                              display:'flex', alignItems:'center', justifyContent:'center', gap:5,
-                            }}>🗺 Navigate</a>
+                            {(trip.status === 'ride_started' || trip.status === 'picked_up') && (
+                              <a href={`https://maps.google.com/?q=${encodeURIComponent(trip.pickup_address)}`} target="_blank" rel="noopener noreferrer" style={{
+                                flex:1, minWidth:70, padding:'12px 8px', borderRadius:12, textDecoration:'none',
+                                background:'#f0fdf4', border:'1.5px solid #bbf7d0',
+                                color:'#166534', fontSize:13, fontWeight:600,
+                                display:'flex', alignItems:'center', justifyContent:'center', gap:5,
+                              }}>🗺 Navigate</a>
+                            )}
                             {action && (
                               <button onClick={()=>advanceTrip(trip)} disabled={advancing===trip.id} style={{
                                 flex:2, minWidth:120, padding:'12px', borderRadius:12, border:'none',
@@ -639,55 +670,68 @@ export default function DriverPage() {
                 <div style={{ fontSize:13, color:'#64748b', marginTop:2 }}>{deliveryModal.food_type} · {deliveryModal.donor_name}</div>
               </div>
             </div>
-            <div style={{ fontSize:13, color:'#64748b', lineHeight:1.6, marginBottom:20 }}>
-              Take a photo at the delivery location to confirm the food reached its destination.
+            <div style={{ fontSize:13, color:'#64748b', lineHeight:1.6, marginBottom:16 }}>
+              Take up to 3 photos at the delivery location to confirm the food reached its destination.
             </div>
             <input ref={deliveryFileRef} type="file" accept="image/*" capture="environment" style={{ display:'none' }}
-              onChange={e=>handleDeliveryPhoto(e.target.files?.[0]??null)} />
-            {!deliveryPreview ? (
-              <div style={{ display:'flex', gap:10, marginBottom:20 }}>
-                <button onClick={()=>deliveryFileRef.current?.click()} style={{
-                  flex:1, padding:'16px 12px', borderRadius:14, border:'2px dashed #bbf7d0',
-                  background:'#f0fdf4', color:'#166534', fontSize:14, fontWeight:700, cursor:'pointer',
-                  display:'flex', flexDirection:'column', alignItems:'center', gap:8,
-                }}>
-                  <span style={{ fontSize:28 }}>📸</span>Take Photo
-                </button>
-                <button onClick={()=>{ if(deliveryFileRef.current){ deliveryFileRef.current.removeAttribute('capture'); deliveryFileRef.current.click(); }}} style={{
-                  flex:1, padding:'16px 12px', borderRadius:14, border:'2px dashed #e2e8f0',
-                  background:'#f8fafc', color:'#64748b', fontSize:14, fontWeight:600, cursor:'pointer',
-                  display:'flex', flexDirection:'column', alignItems:'center', gap:8,
-                }}>
-                  <span style={{ fontSize:28 }}>🖼️</span>Gallery
-                </button>
-              </div>
-            ) : (
-              <div style={{ position:'relative', borderRadius:14, overflow:'hidden', marginBottom:20, border:'2px solid #bbf7d0' }}>
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={deliveryPreview} alt="Delivery" style={{ width:'100%', maxHeight:220, objectFit:'cover', display:'block' }}/>
-                <div style={{ position:'absolute', top:8, right:8 }}>
-                  <button onClick={()=>{setDeliveryPhoto(null);setDeliveryPreview(null);}} style={{
-                    background:'rgba(0,0,0,0.6)', border:'none', color:'#fff', borderRadius:8, padding:'5px 10px', fontSize:12, cursor:'pointer', fontWeight:600,
-                  }}>Retake</button>
-                </div>
-                <div style={{ background:'#f0fdf4', padding:'8px 14px', display:'flex', alignItems:'center', gap:6 }}>
-                  <span style={{ color:'#22c55e', fontSize:14 }}>✓</span>
-                  <span style={{ color:'#166534', fontSize:12, fontWeight:600 }}>Photo ready</span>
-                </div>
+              onChange={e=>{ handleDeliveryPhoto(e.target.files?.[0]??null); if(deliveryFileRef.current) deliveryFileRef.current.value=''; }} />
+
+            {/* Photo previews grid */}
+            {deliveryPreviews.length > 0 && (
+              <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:8, marginBottom:14 }}>
+                {deliveryPreviews.map((src, idx) => (
+                  <div key={idx} style={{ position:'relative', borderRadius:12, overflow:'hidden', border:'2px solid #bbf7d0', aspectRatio:'1' }}>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={src} alt={`Delivery ${idx+1}`} style={{ width:'100%', height:'100%', objectFit:'cover', display:'block' }}/>
+                    <button onClick={()=>removeDeliveryPhoto(idx)} style={{
+                      position:'absolute', top:4, right:4,
+                      background:'rgba(0,0,0,0.6)', border:'none', color:'#fff',
+                      borderRadius:6, padding:'3px 7px', fontSize:11, cursor:'pointer', fontWeight:700,
+                    }}>✕</button>
+                  </div>
+                ))}
               </div>
             )}
+
+            {/* Add photo buttons — show if < 3 photos */}
+            {deliveryPhotos.length < 3 && (
+              <div style={{ display:'flex', gap:10, marginBottom:16 }}>
+                <button onClick={()=>{ if(deliveryFileRef.current){ deliveryFileRef.current.setAttribute('capture','environment'); deliveryFileRef.current.click(); }}} style={{
+                  flex:1, padding:'14px 12px', borderRadius:14, border:'2px dashed #bbf7d0',
+                  background:'#f0fdf4', color:'#166534', fontSize:13, fontWeight:700, cursor:'pointer',
+                  display:'flex', flexDirection:'column', alignItems:'center', gap:6,
+                }}>
+                  <span style={{ fontSize:24 }}>📸</span>
+                  {deliveryPhotos.length === 0 ? 'Take Photo' : 'Add Photo'}
+                </button>
+                <button onClick={()=>{ if(deliveryFileRef.current){ deliveryFileRef.current.removeAttribute('capture'); deliveryFileRef.current.click(); }}} style={{
+                  flex:1, padding:'14px 12px', borderRadius:14, border:'2px dashed #e2e8f0',
+                  background:'#f8fafc', color:'#64748b', fontSize:13, fontWeight:600, cursor:'pointer',
+                  display:'flex', flexDirection:'column', alignItems:'center', gap:6,
+                }}>
+                  <span style={{ fontSize:24 }}>🖼️</span>Gallery
+                </button>
+              </div>
+            )}
+            {deliveryPhotos.length > 0 && (
+              <div style={{ background:'#f0fdf4', borderRadius:10, padding:'8px 14px', display:'flex', alignItems:'center', gap:6, marginBottom:16 }}>
+                <span style={{ color:'#22c55e', fontSize:14 }}>✓</span>
+                <span style={{ color:'#166534', fontSize:12, fontWeight:600 }}>{deliveryPhotos.length} photo{deliveryPhotos.length>1?'s':''} ready · {3-deliveryPhotos.length} more allowed</span>
+              </div>
+            )}
+
             {deliveryErr && <div style={{ background:'#fef2f2', border:'1px solid #fecaca', borderRadius:10, padding:'10px 14px', color:'#dc2626', fontSize:13, marginBottom:16 }}>⚠️ {deliveryErr}</div>}
             <div style={{ display:'flex', gap:10 }}>
-              <button onClick={()=>setDeliveryModal(null)} style={{
+              <button onClick={()=>{ setDeliveryModal(null); setDeliveryPhotos([]); setDeliveryPreviews([]); }} style={{
                 flex:1, padding:'14px', borderRadius:12, border:'1.5px solid #e2e8f0',
                 background:'#fff', color:'#64748b', fontSize:14, fontWeight:600, cursor:'pointer',
               }}>Cancel</button>
               <button onClick={submitDelivery} disabled={advancing===deliveryModal.id} style={{
                 flex:2, padding:'14px', borderRadius:12, border:'none',
-                background: deliveryPhoto ? 'linear-gradient(135deg,#22c55e,#16a34a)' : '#f1f5f9',
-                color: deliveryPhoto ? '#fff' : '#94a3b8',
-                fontSize:14, fontWeight:800, cursor: deliveryPhoto ? 'pointer' : 'not-allowed',
-                boxShadow: deliveryPhoto ? '0 4px 20px rgba(34,197,94,0.35)' : 'none',
+                background: deliveryPhotos.length > 0 ? 'linear-gradient(135deg,#22c55e,#16a34a)' : '#f1f5f9',
+                color: deliveryPhotos.length > 0 ? '#fff' : '#94a3b8',
+                fontSize:14, fontWeight:800, cursor: deliveryPhotos.length > 0 ? 'pointer' : 'not-allowed',
+                boxShadow: deliveryPhotos.length > 0 ? '0 4px 20px rgba(34,197,94,0.35)' : 'none',
                 transition:'all 0.2s',
               }}>
                 {advancing===deliveryModal.id ? 'Confirming…' : '✅ Confirm Delivery'}
