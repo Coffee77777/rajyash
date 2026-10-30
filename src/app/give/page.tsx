@@ -1,8 +1,11 @@
 'use client';
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 
 const API = 'https://slipms.com/rajyash-api';
+// Default center: Ahmedabad
+const DEFAULT_LAT = 23.0225;
+const DEFAULT_LNG = 72.5714;
 
 export default function GivePage() {
   const [step, setStep] = useState<'form' | 'success'>('form');
@@ -16,6 +19,110 @@ export default function GivePage() {
   const [photos, setPhotos] = useState<File[]>([]);
   const [photoPreviews, setPhotoPreviews] = useState<string[]>([]);
   const fileRef = useRef<HTMLInputElement>(null);
+
+  // ── Map pin picker ────────────────────────────────────────────────
+  const [mapOpen, setMapOpen]           = useState(false);
+  const [mapReady, setMapReady]         = useState(false);
+  const [mapAddr, setMapAddr]           = useState('');
+  const [mapLoading, setMapLoading]     = useState(false);
+  const [gpsLoading, setGpsLoading]     = useState(false);
+  const mapDivRef  = useRef<HTMLDivElement>(null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const leafletRef = useRef<any>(null);   // L instance
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const mapRef     = useRef<any>(null);   // map instance
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const markerRef  = useRef<any>(null);   // draggable marker
+  const latLngRef  = useRef<[number,number]>([DEFAULT_LAT, DEFAULT_LNG]);
+
+  // Load Leaflet assets once
+  useEffect(() => {
+    if (mapReady || typeof window === 'undefined') return;
+    const linkEl = document.createElement('link');
+    linkEl.rel = 'stylesheet';
+    linkEl.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
+    document.head.appendChild(linkEl);
+    const scriptEl = document.createElement('script');
+    scriptEl.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
+    scriptEl.onload = () => setMapReady(true);
+    document.body.appendChild(scriptEl);
+  }, [mapReady]);
+
+  const reverseGeocode = useCallback(async (lat: number, lng: number) => {
+    setMapLoading(true);
+    setMapAddr('');
+    try {
+      const r = await fetch(
+        `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}`,
+        { headers: { 'Accept-Language': 'en' } }
+      );
+      const d = await r.json();
+      const a = d.address || {};
+      const parts = [a.road||a.pedestrian||a.footway, a.neighbourhood||a.suburb, a.city||a.town||a.village, a.state].filter(Boolean);
+      setMapAddr(parts.join(', ') || d.display_name || `${lat.toFixed(5)}, ${lng.toFixed(5)}`);
+    } catch { setMapAddr(`${lat.toFixed(5)}, ${lng.toFixed(5)}`); }
+    finally { setMapLoading(false); }
+  }, []);
+
+  // Initialise map when modal opens
+  useEffect(() => {
+    if (!mapOpen || !mapReady || !mapDivRef.current) return;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const L = (window as any).L;
+    leafletRef.current = L;
+    if (mapRef.current) { mapRef.current.remove(); mapRef.current = null; }
+
+    const map = L.map(mapDivRef.current, { zoomControl: true }).setView(latLngRef.current, 15);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '© OpenStreetMap contributors', maxZoom: 19
+    }).addTo(map);
+
+    // Custom green pin icon
+    const icon = L.divIcon({
+      html: '<div style="width:28px;height:28px;background:#0F3D1F;border-radius:50% 50% 50% 0;transform:rotate(-45deg);border:3px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,0.4)"></div>',
+      className: '', iconSize: [28,28], iconAnchor: [14,28], popupAnchor: [0,-30],
+    });
+    const marker = L.marker(latLngRef.current, { draggable: true, icon }).addTo(map);
+    markerRef.current = marker;
+
+    const onMove = (latlng: {lat:number;lng:number}) => {
+      latLngRef.current = [latlng.lat, latlng.lng];
+      reverseGeocode(latlng.lat, latlng.lng);
+    };
+    marker.on('dragend', (e: {target:{getLatLng:()=>{lat:number;lng:number}}}) => onMove(e.target.getLatLng()));
+    map.on('click', (e: {latlng:{lat:number;lng:number}}) => { marker.setLatLng(e.latlng); onMove(e.latlng); });
+    mapRef.current = map;
+
+    // Initial reverse geocode
+    reverseGeocode(latLngRef.current[0], latLngRef.current[1]);
+
+    return () => { /* keep map; removed when modal re-renders */ };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mapOpen, mapReady]);
+
+  const useGPS = useCallback(() => {
+    if (!navigator.geolocation) return;
+    setGpsLoading(true);
+    navigator.geolocation.getCurrentPosition(
+      pos => {
+        const { latitude: lat, longitude: lng } = pos.coords;
+        latLngRef.current = [lat, lng];
+        if (mapRef.current && markerRef.current) {
+          markerRef.current.setLatLng([lat, lng]);
+          mapRef.current.setView([lat, lng], 17);
+        }
+        reverseGeocode(lat, lng);
+        setGpsLoading(false);
+      },
+      () => setGpsLoading(false),
+      { enableHighAccuracy: true, timeout: 8000 }
+    );
+  }, [reverseGeocode]);
+
+  const confirmPin = useCallback(() => {
+    if (mapAddr) set('pickup_address', mapAddr);
+    setMapOpen(false);
+  }, [mapAddr]); // eslint-disable-line react-hooks/exhaustive-deps
 
   function set(k: string, v: string) { setForm(f => ({ ...f, [k]: v })); }
 
@@ -166,9 +273,15 @@ export default function GivePage() {
               </div>
             </div>
             <div style={{ marginBottom: 14 }}>
-              <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#1B5E38', marginBottom: 6 }}>Pickup Address *</label>
+              <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom: 6 }}>
+                <label style={{ fontSize: 12, fontWeight: 600, color: '#1B5E38' }}>Pickup Address *</label>
+                <button type="button" onClick={() => setMapOpen(true)}
+                  style={{ display:'flex', alignItems:'center', gap:5, padding:'4px 12px', borderRadius:20, border:'1.5px solid #1B5E38', background:'#f0fdf4', color:'#1B5E38', fontSize:12, fontWeight:700, cursor:'pointer' }}>
+                  📍 Drop Pin
+                </button>
+              </div>
               <input required value={form.pickup_address} onChange={e => set('pickup_address', e.target.value)}
-                placeholder="Where should the driver come?" style={inputStyle}
+                placeholder="Type address or use Drop Pin →" style={inputStyle}
                 onFocus={e => { e.target.style.borderColor='#0F3D1F'; e.target.style.boxShadow='0 0 0 3px rgba(10,46,30,0.08)'; }}
                 onBlur={e => { e.target.style.borderColor='#e0ebe5'; e.target.style.boxShadow='none'; }} />
             </div>
@@ -246,6 +359,41 @@ export default function GivePage() {
           </p>
         </form>
       </div>
+
+      {/* ── MAP PIN PICKER MODAL ── */}
+      {mapOpen && (
+        <div style={{ position:'fixed', inset:0, zIndex:300, display:'flex', flexDirection:'column' }}
+          onClick={e => { if (e.target === e.currentTarget) setMapOpen(false); }}>
+          {/* Header bar */}
+          <div style={{ background:'#0F3D1F', padding:'14px 20px', display:'flex', alignItems:'center', justifyContent:'space-between', flexShrink:0 }}>
+            <div>
+              <div style={{ color:'#fff', fontWeight:800, fontSize:16 }}>📍 Drop Pin — Pickup Location</div>
+              <div style={{ color:'rgba(255,255,255,0.55)', fontSize:12, marginTop:2 }}>Tap the map or drag the pin</div>
+            </div>
+            <button onClick={() => setMapOpen(false)} style={{ background:'rgba(255,255,255,0.12)', border:'none', color:'#fff', fontSize:20, width:36, height:36, borderRadius:'50%', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center' }}>✕</button>
+          </div>
+
+          {/* Map */}
+          <div ref={mapDivRef} style={{ flex:1, minHeight:0 }} />
+
+          {/* Bottom sheet */}
+          <div style={{ background:'#fff', padding:'16px 20px 24px', borderTop:'1.5px solid #e0ebe5', flexShrink:0, boxShadow:'0 -4px 20px rgba(0,0,0,0.12)' }}>
+            <div style={{ display:'flex', gap:10, marginBottom:14 }}>
+              <button type="button" onClick={useGPS} disabled={gpsLoading}
+                style={{ flex:1, padding:'10px', borderRadius:10, border:'1.5px solid #1B5E38', background:'#f0fdf4', color:'#1B5E38', fontSize:13, fontWeight:700, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:6 }}>
+                {gpsLoading ? '…' : '🎯 Use My Location'}
+              </button>
+            </div>
+            <div style={{ background:'#FDFBF7', border:'1.5px solid #e0ebe5', borderRadius:10, padding:'10px 14px', marginBottom:14, minHeight:42, fontSize:13, color:'#0F3D1F', fontWeight:500 }}>
+              {mapLoading ? <span style={{ color:'#A8B5AD' }}>Getting address…</span> : mapAddr || <span style={{ color:'#A8B5AD' }}>Tap map to pick location</span>}
+            </div>
+            <button type="button" onClick={confirmPin} disabled={!mapAddr || mapLoading}
+              style={{ width:'100%', padding:'14px', borderRadius:12, border:'none', background: (!mapAddr||mapLoading)?'#e0ebe5':'linear-gradient(135deg,#1B5E38,#0F3D1F)', color:(!mapAddr||mapLoading)?'#A8B5AD':'#fff', fontSize:15, fontWeight:800, cursor:(!mapAddr||mapLoading)?'not-allowed':'pointer' }}>
+              Confirm This Location →
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
