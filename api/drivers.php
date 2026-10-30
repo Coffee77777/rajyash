@@ -62,7 +62,7 @@ if ($method === 'POST') {
     if ($ex->fetch()) jsonOut(['success' => true]); // already exists, idempotent
 
     $pdo->prepare("INSERT INTO drivers (user_id, vehicle_number) VALUES (?,?)")
-        ->execute([$userId, $vehicleNo ?: null]);
+        ->execute([$userId, $vehicleNo ?: '']);
 
     auditLog($pdo, $me['sub'], 'create_driver', 'drivers', $userId, ['vehicle_number' => $vehicleNo]);
     jsonOut(['success' => true], 201);

@@ -87,6 +87,7 @@ export default function AdminPage() {
   const [driverForm, setDriverForm]     = useState({ name:'', phone:'', password:'', vehicle_number:'' });
   const [driverSaving, setDriverSaving] = useState(false);
   const [driverErr, setDriverErr]       = useState('');
+  const [driverCreated, setDriverCreated] = useState<{name:string;phone:string;password:string}|null>(null);
 
   useEffect(() => {
     const t = sessionStorage.getItem('rj_admin_token');
@@ -184,6 +185,7 @@ export default function AdminPage() {
         method:'POST', headers:{'Content-Type':'application/json', Authorization:`Bearer ${token}`},
         body: JSON.stringify({ user_id: d.id, vehicle_number: driverForm.vehicle_number }),
       });
+      setDriverCreated({ name: driverForm.name, phone: driverForm.phone, password: driverForm.password });
       setDriverModal(false);
       setDriverForm({ name:'', phone:'', password:'', vehicle_number:'' });
       fetchAll(token!, filterStatus);
@@ -1257,6 +1259,27 @@ export default function AdminPage() {
       )}
 
       {/* ── ADD DRIVER MODAL ── */}
+      {driverCreated && (
+        <div style={{ position:'fixed', inset:0, background:'rgba(15,23,42,0.7)', backdropFilter:'blur(12px)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:210, padding:24 }}
+          onClick={()=>setDriverCreated(null)}>
+          <div style={{ background:'#fff', borderRadius:24, padding:'36px', width:'100%', maxWidth:400, boxShadow:'0 40px 80px rgba(0,0,0,0.25)', textAlign:'center' }} onClick={e=>e.stopPropagation()}>
+            <div style={{ fontSize:48, marginBottom:12 }}>✅</div>
+            <h2 style={{ fontSize:20, fontWeight:800, color:'#0f172a', margin:'0 0 6px' }}>Driver Created!</h2>
+            <p style={{ color:'#64748b', fontSize:13, margin:'0 0 24px' }}>Share these credentials with the driver</p>
+            <div style={{ background:'#f8fafc', border:'1.5px solid #e2e8f0', borderRadius:14, padding:'20px', textAlign:'left', marginBottom:20, fontFamily:'monospace', fontSize:14 }}>
+              <div style={{ marginBottom:10 }}><span style={{ color:'#64748b', fontFamily:'sans-serif', fontSize:11, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.05em' }}>Name</span><br/><strong style={{ color:'#0f172a', fontSize:15 }}>{driverCreated.name}</strong></div>
+              <div style={{ marginBottom:10 }}><span style={{ color:'#64748b', fontFamily:'sans-serif', fontSize:11, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.05em' }}>Phone</span><br/><strong style={{ color:'#0f172a', fontSize:15 }}>{driverCreated.phone}</strong></div>
+              <div><span style={{ color:'#64748b', fontFamily:'sans-serif', fontSize:11, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.05em' }}>Password</span><br/><strong style={{ color:'#0f172a', fontSize:15 }}>{driverCreated.password}</strong></div>
+            </div>
+            <a href="/driver" target="_blank" rel="noopener noreferrer"
+              style={{ display:'block', padding:'13px', borderRadius:12, background:'linear-gradient(135deg,#0F3D1F,#1B5E38)', color:'#fff', fontWeight:700, fontSize:14, textDecoration:'none', marginBottom:12, boxShadow:'0 4px 16px rgba(10,46,30,0.25)' }}>
+              🚗 Open Driver Portal
+            </a>
+            <button onClick={()=>setDriverCreated(null)} style={{ width:'100%', padding:'11px', borderRadius:10, border:'1.5px solid #e2e8f0', background:'transparent', color:'#64748b', cursor:'pointer', fontSize:14, fontWeight:500 }}>Close</button>
+          </div>
+        </div>
+      )}
+
       {driverModal && (
         <div style={{ position:'fixed', inset:0, background:'rgba(15,23,42,0.6)', backdropFilter:'blur(12px)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:200, padding:24 }}
           onClick={()=>setDriverModal(false)}>
