@@ -445,8 +445,6 @@ export default function DriverPage() {
   return (
     <div style={{ minHeight:'100vh', background:'#f1f5f9', fontFamily:'Inter,system-ui,sans-serif', overflowX:'hidden', width:'100%' }}>
       <style>{`
-        * { box-sizing: border-box; }
-        body { overflow-x: hidden; }
         @media (max-width: 480px) {
           .trip-card-actions { flex-wrap: wrap !important; }
           .trip-card-actions a, .trip-card-actions button { min-width: 0 !important; flex: 1 1 auto !important; }

@@ -404,8 +404,6 @@ export default function AdminPage() {
   return (
     <div style={{ minHeight:'100vh', background:'#f1f5f9', fontFamily:'Inter,system-ui,sans-serif', color:'#0f172a', overflowX:'hidden', width:'100%' }}>
       <style>{`
-        * { box-sizing: border-box; }
-        body { overflow-x: hidden; }
         @media (max-width: 640px) {
           .rj-admin-name-col { display: none !important; }
           .rj-header-subtitle { display: none !important; }
