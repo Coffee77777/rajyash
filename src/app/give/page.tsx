@@ -271,17 +271,13 @@ export default function GivePage() {
 
               {/* Address text field */}
               <input required value={form.pickup_address}
-                onChange={e => {
-                  set('pickup_address', e.target.value);
-                  // If user edits manually after GPS, clear pin coords
-                  if (gpsConfirmed) { setPinLat(null); setPinLng(null); setGpsConfirmed(false); }
-                }}
-                placeholder="Or type address: Building, Street, Area, City"
+                onChange={e => set('pickup_address', e.target.value)}
+                placeholder="Or type: Shop No., Floor, Building, Area, City"
                 style={inputStyle}
                 onFocus={e => { e.target.style.borderColor='#0F3D1F'; e.target.style.boxShadow='0 0 0 3px rgba(10,46,30,0.08)'; }}
                 onBlur={e => { e.target.style.borderColor='#e0ebe5'; e.target.style.boxShadow='none'; }} />
               <p style={{ fontSize: 11, color: '#A8B5AD', marginTop: 5 }}>
-                GPS gives the driver your exact location. You can also type or edit the address above.
+                GPS pins your exact spot. Add shop no., floor or landmark in the field above — GPS coordinates are kept.
               </p>
             </div>
 
