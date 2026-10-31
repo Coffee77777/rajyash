@@ -90,6 +90,8 @@ export default function AdminPage() {
   const [driverSaving, setDriverSaving] = useState(false);
   const [driverErr, setDriverErr]       = useState('');
   const [driverCreated, setDriverCreated] = useState<{name:string;phone:string;password:string}|null>(null);
+  const [currentPage, setCurrentPage]     = useState(1);
+  const PER_PAGE = 25;
 
   useEffect(() => {
     const t = sessionStorage.getItem('rj_admin_token');
@@ -205,6 +207,9 @@ export default function AdminPage() {
   useEffect(() => {
     if (token && activeTab === 'analytics') fetchAnalytics(token);
   }, [token, activeTab, fetchAnalytics]);
+
+  // Reset to page 1 whenever filters change
+  useEffect(() => { setCurrentPage(1); }, [activeTab, filterStatus, search, dateFrom, dateTo]);
 
   async function doLogin(e: React.FormEvent) {
     e.preventDefault(); setLoginErr(''); setLogging(true);
@@ -385,6 +390,9 @@ export default function AdminPage() {
       `rj-${String(r.id).padStart(5,'0')}`.includes(q)
     );
   });
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PER_PAGE));
+  const paginated  = filtered.slice((currentPage - 1) * PER_PAGE, currentPage * PER_PAGE);
 
   // Per-driver grouping for Drivers tab
   type DriverStat = { id: number; name: string; phone: string; total: number; delivered: number; active: number; reqs: Request[] };
@@ -861,7 +869,7 @@ export default function AdminPage() {
           </div>
         ) : (
           <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
-            {filtered.map(req => {
+            {paginated.map(req => {
               const sc = S_COLOR[req.status] || { bg:'#f9fafb', text:'#374151', dot:'#9ca3af' };
               const lc = S_LEFT[req.status] || '#e2e8f0';
               const thumbs = req.photo_path ? req.photo_path.split(',').map(p => UPLOADS + p) : [];
@@ -987,6 +995,55 @@ export default function AdminPage() {
             })}
           </div>
         ))}
+
+        {/* ── PAGINATION ── */}
+        {(activeTab === 'requests' || activeTab === 'deliveries') && filtered.length > PER_PAGE && (
+          <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginTop:20, padding:'14px 20px', background:'#fff', borderRadius:14, border:'1px solid #f1f5f9', boxShadow:'0 1px 4px rgba(0,0,0,0.04)' }}>
+            {/* Count label */}
+            <div style={{ fontSize:13, color:'#64748b', fontWeight:500 }}>
+              <span style={{ fontWeight:700, color:'#0f172a' }}>{filtered.length}</span> results ·
+              Page <span style={{ fontWeight:700, color:'#0f172a' }}>{currentPage}</span> of {totalPages}
+            </div>
+            {/* Page buttons */}
+            <div style={{ display:'flex', gap:4, alignItems:'center' }}>
+              <button onClick={()=>setCurrentPage(1)} disabled={currentPage===1} style={{
+                padding:'6px 10px', borderRadius:8, border:'1.5px solid #e2e8f0', background:'#fff',
+                color:currentPage===1?'#cbd5e1':'#374151', cursor:currentPage===1?'not-allowed':'pointer', fontSize:12, fontWeight:600,
+              }}>«</button>
+              <button onClick={()=>setCurrentPage(p=>Math.max(1,p-1))} disabled={currentPage===1} style={{
+                padding:'6px 12px', borderRadius:8, border:'1.5px solid #e2e8f0', background:'#fff',
+                color:currentPage===1?'#cbd5e1':'#374151', cursor:currentPage===1?'not-allowed':'pointer', fontSize:13, fontWeight:600,
+              }}>‹ Prev</button>
+
+              {/* Page number pills — show at most 5 pages around current */}
+              {Array.from({length: totalPages}, (_,i)=>i+1)
+                .filter(p => p===1 || p===totalPages || Math.abs(p-currentPage)<=1)
+                .reduce<(number|'...')[]>((acc, p, i, arr) => {
+                  if (i > 0 && (p as number) - (arr[i-1] as number) > 1) acc.push('...');
+                  acc.push(p); return acc;
+                }, [])
+                .map((p, i) => p === '...'
+                  ? <span key={`e${i}`} style={{ padding:'0 4px', color:'#94a3b8', fontSize:13 }}>…</span>
+                  : <button key={p} onClick={()=>setCurrentPage(p as number)} style={{
+                      padding:'6px 10px', borderRadius:8, minWidth:34, textAlign:'center',
+                      border:`1.5px solid ${currentPage===p?'#1B5E38':'#e2e8f0'}`,
+                      background:currentPage===p?'#1B5E38':'#fff',
+                      color:currentPage===p?'#fff':'#374151',
+                      cursor:'pointer', fontSize:13, fontWeight:700,
+                    }}>{p}</button>
+                )}
+
+              <button onClick={()=>setCurrentPage(p=>Math.min(totalPages,p+1))} disabled={currentPage===totalPages} style={{
+                padding:'6px 12px', borderRadius:8, border:'1.5px solid #e2e8f0', background:'#fff',
+                color:currentPage===totalPages?'#cbd5e1':'#374151', cursor:currentPage===totalPages?'not-allowed':'pointer', fontSize:13, fontWeight:600,
+              }}>Next ›</button>
+              <button onClick={()=>setCurrentPage(totalPages)} disabled={currentPage===totalPages} style={{
+                padding:'6px 10px', borderRadius:8, border:'1.5px solid #e2e8f0', background:'#fff',
+                color:currentPage===totalPages?'#cbd5e1':'#374151', cursor:currentPage===totalPages?'not-allowed':'pointer', fontSize:12, fontWeight:600,
+              }}>»</button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* ── ASSIGN MODAL ── */}
