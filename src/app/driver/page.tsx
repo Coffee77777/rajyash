@@ -183,8 +183,8 @@ export default function DriverPage() {
         fetchTrips(token!);
         if (action.next === 'ride_started') {
           const mapsUrl = (trip.pickup_lat && trip.pickup_lng)
-            ? `https://maps.google.com/?q=${trip.pickup_lat},${trip.pickup_lng}`
-            : `https://maps.google.com/?q=${encodeURIComponent(trip.pickup_address)}`;
+            ? `https://www.google.com/maps/dir/?api=1&destination=${trip.pickup_lat},${trip.pickup_lng}`
+            : `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(trip.pickup_address)}`;
           window.open(mapsUrl, '_blank');
         }
       }
@@ -582,7 +582,7 @@ export default function DriverPage() {
                               display:'flex', alignItems:'center', justifyContent:'center', gap:5,
                             }}>📞 Call</a>
                             {(trip.status === 'ride_started' || trip.status === 'picked_up') && (
-                              <a href={(trip.pickup_lat && trip.pickup_lng) ? `https://maps.google.com/?q=${trip.pickup_lat},${trip.pickup_lng}` : `https://maps.google.com/?q=${encodeURIComponent(trip.pickup_address)}`} target="_blank" rel="noopener noreferrer" style={{
+                              <a href={(trip.pickup_lat && trip.pickup_lng) ? `https://www.google.com/maps/dir/?api=1&destination=${trip.pickup_lat},${trip.pickup_lng}` : `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(trip.pickup_address)}`} target="_blank" rel="noopener noreferrer" style={{
                                 flex:1, minWidth:70, padding:'12px 8px', borderRadius:12, textDecoration:'none',
                                 background:'#f0fdf4', border:'1.5px solid #bbf7d0',
                                 color:'#166534', fontSize:13, fontWeight:600,
