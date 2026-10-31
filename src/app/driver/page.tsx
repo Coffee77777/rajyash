@@ -443,33 +443,42 @@ export default function DriverPage() {
   };
 
   return (
-    <div style={{ minHeight:'100vh', background:'#f1f5f9', fontFamily:'Inter,system-ui,sans-serif' }}>
+    <div style={{ minHeight:'100vh', background:'#f1f5f9', fontFamily:'Inter,system-ui,sans-serif', overflowX:'hidden', width:'100%' }}>
+      <style>{`
+        * { box-sizing: border-box; }
+        body { overflow-x: hidden; }
+        @media (max-width: 480px) {
+          .trip-card-actions { flex-wrap: wrap !important; }
+          .trip-card-actions a, .trip-card-actions button { min-width: 0 !important; flex: 1 1 auto !important; }
+        }
+      `}</style>
 
       {/* ── HEADER ── */}
       <div style={{
         background:'#fff', borderBottom:'1px solid #e2e8f0',
-        padding:'0 24px', height:64,
+        padding:'0 16px', height:64,
         display:'flex', alignItems:'center', justifyContent:'space-between',
         position:'sticky', top:0, zIndex:100,
         boxShadow:'0 1px 3px rgba(0,0,0,0.06)',
+        width:'100%', boxSizing:'border-box',
       }}>
-        <div style={{ display:'flex', alignItems:'center', gap:14 }}>
-          <Image src="/rajyash-logo.png" alt="Rajyash Foundation" width={120} height={40} style={{ objectFit:'contain' }} priority />
-          <div style={{ width:1, height:28, background:'#e2e8f0' }}/>
-          <div>
-            <div style={{ fontWeight:700, color:'#0f172a', fontSize:14, lineHeight:1.1 }}>{driverName || 'Driver'}</div>
-            <div style={{ fontSize:11, color:'#94a3b8' }}>Driver Portal</div>
+        <div style={{ display:'flex', alignItems:'center', gap:10, minWidth:0 }}>
+          <Image src="/rajyash-logo.png" alt="Rajyash Foundation" width={90} height={32} style={{ objectFit:'contain', flexShrink:0 }} priority />
+          <div style={{ width:1, height:24, background:'#e2e8f0', flexShrink:0 }}/>
+          <div style={{ minWidth:0 }}>
+            <div style={{ fontWeight:700, color:'#0f172a', fontSize:13, lineHeight:1.1, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{driverName || 'Driver'}</div>
+            <div style={{ fontSize:10, color:'#94a3b8' }}>Driver Portal</div>
           </div>
         </div>
-        <div style={{ display:'flex', gap:8 }}>
+        <div style={{ display:'flex', gap:6, flexShrink:0 }}>
           <button onClick={()=>fetchTrips(token!)} style={{
-            padding:'7px 14px', borderRadius:8, border:'1.5px solid #e2e8f0',
+            padding:'7px 12px', borderRadius:8, border:'1.5px solid #e2e8f0',
             background:'#fff', color:'#64748b', cursor:'pointer', fontSize:13, fontWeight:500,
           }}>↻</button>
           <button onClick={logout} style={{
-            padding:'7px 14px', borderRadius:8, border:'1.5px solid #e2e8f0',
-            background:'#fff', color:'#64748b', cursor:'pointer', fontSize:13, fontWeight:500,
-          }}>Sign Out</button>
+            padding:'7px 12px', borderRadius:8, border:'1.5px solid #e2e8f0',
+            background:'#fff', color:'#64748b', cursor:'pointer', fontSize:12, fontWeight:500,
+          }}>Out</button>
         </div>
       </div>
 
@@ -497,7 +506,7 @@ export default function DriverPage() {
         );
       })()}
 
-      <div style={{ maxWidth:640, margin:'0 auto', padding:'24px 16px 80px' }}>
+      <div style={{ maxWidth:640, margin:'0 auto', padding:'24px 12px 80px', boxSizing:'border-box', width:'100%' }}>
         {loading ? (
           <div style={{ textAlign:'center', padding:'80px 0', color:'#94a3b8' }}>
             <div style={{ fontSize:32, marginBottom:12 }}>⏳</div>
@@ -574,7 +583,7 @@ export default function DriverPage() {
                           </div>
 
                           {/* Actions */}
-                          <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
+                          <div className="trip-card-actions" style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
                             <a href={`tel:${trip.donor_phone}`} style={{
                               flex:1, minWidth:70, padding:'12px 8px', borderRadius:12, textDecoration:'none',
                               background:'#f8fafc', border:'1.5px solid #e2e8f0',
