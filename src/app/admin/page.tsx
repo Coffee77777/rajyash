@@ -402,15 +402,19 @@ export default function AdminPage() {
   const driverStats = Object.values(driverMap).sort((a,b) => b.delivered - a.delivered);
 
   return (
-    <div style={{ minHeight:'100vh', background:'#f1f5f9', fontFamily:'Inter,system-ui,sans-serif', color:'#0f172a' }}>
+    <div style={{ minHeight:'100vh', background:'#f1f5f9', fontFamily:'Inter,system-ui,sans-serif', color:'#0f172a', overflowX:'hidden', width:'100%' }}>
       <style>{`
+        * { box-sizing: border-box; }
+        body { overflow-x: hidden; }
         @media (max-width: 640px) {
           .rj-admin-name-col { display: none !important; }
           .rj-header-subtitle { display: none !important; }
-          .rj-tab-label { font-size: 11px !important; padding: 7px 10px !important; }
-          .rj-page-pad { padding: 16px 12px !important; }
+          .rj-tab-label { font-size: 11px !important; padding: 7px 8px !important; }
+          .rj-page-pad { padding: 16px 10px !important; }
           .rj-stats-grid { grid-template-columns: repeat(2, 1fr) !important; }
-          .rj-header-inner { padding: 0 12px !important; }
+          .rj-header-inner { padding: 0 10px !important; }
+          .rj-filter-row { flex-wrap: wrap !important; }
+          .rj-search-box { width: 100% !important; }
         }
       `}</style>
 
@@ -421,9 +425,10 @@ export default function AdminPage() {
         display:'flex', alignItems:'center', justifyContent:'space-between',
         position:'sticky', top:0, zIndex:100,
         boxShadow:'0 1px 3px rgba(0,0,0,0.06)',
+        width:'100%', boxSizing:'border-box',
       }}>
-        <div className="rj-header-inner" style={{ display:'flex', alignItems:'center', gap:14 }}>
-          <Image src="/rajyash-logo.png" alt="Rajyash Foundation" width={130} height={44} style={{ objectFit:'contain' }} priority />
+        <div className="rj-header-inner" style={{ display:'flex', alignItems:'center', gap:12, minWidth:0 }}>
+          <Image src="/rajyash-logo.png" alt="Rajyash Foundation" width={110} height={38} style={{ objectFit:'contain', flexShrink:0 }} priority />
           <div style={{ width:1, height:28, background:'#e2e8f0' }}/>
           <div>
             <div style={{ fontWeight:700, color:'#0f172a', fontSize:14, lineHeight:1.1 }}>Admin Portal</div>
@@ -431,18 +436,18 @@ export default function AdminPage() {
           </div>
         </div>
 
-        <div style={{ display:'flex', alignItems:'center', gap:12 }}>
+        <div style={{ display:'flex', alignItems:'center', gap:8, flexShrink:0 }}>
           <div className="rj-admin-name-col" style={{ textAlign:'right' }}>
             <div style={{ fontSize:13, fontWeight:600, color:'#334155' }}>{adminName}</div>
             <div style={{ fontSize:11, color:'#94a3b8' }}>Administrator</div>
           </div>
-          <div style={{ width:36, height:36, borderRadius:'50%', background:'linear-gradient(135deg,#0A2E1E,#145C3A)', display:'flex', alignItems:'center', justifyContent:'center', color:'#fff', fontWeight:700, fontSize:14 }}>
+          <div style={{ width:32, height:32, borderRadius:'50%', background:'linear-gradient(135deg,#0A2E1E,#145C3A)', display:'flex', alignItems:'center', justifyContent:'center', color:'#fff', fontWeight:700, fontSize:13, flexShrink:0 }}>
             {adminName.charAt(0).toUpperCase()}
           </div>
           <button onClick={logout} style={{
-            padding:'7px 16px', borderRadius:8, border:'1.5px solid #e2e8f0',
-            background:'#fff', color:'#64748b', cursor:'pointer', fontSize:13, fontWeight:500,
-            transition:'all 0.2s',
+            padding:'7px 12px', borderRadius:8, border:'1.5px solid #e2e8f0',
+            background:'#fff', color:'#64748b', cursor:'pointer', fontSize:12, fontWeight:500,
+            transition:'all 0.2s', flexShrink:0,
           }}
           onMouseEnter={e=>{e.currentTarget.style.borderColor='#cbd5e1';e.currentTarget.style.background='#f8fafc';}}
           onMouseLeave={e=>{e.currentTarget.style.borderColor='#e2e8f0';e.currentTarget.style.background='#fff';}}>
