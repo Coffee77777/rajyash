@@ -131,6 +131,9 @@ export default function GivePage() {
           <div style={{ fontSize: 36, fontWeight: 900, color: '#0F3D1F', letterSpacing: '-1px' }}>{trackingId}</div>
         </div>
         <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', justifyContent: 'center' }}>
+          <Link href="/" style={{ padding: '13px 24px', borderRadius: 50, border: '1.5px solid rgba(255,255,255,0.3)', background: 'rgba(255,255,255,0.12)', color: '#fff', fontSize: 14, fontWeight: 600, textDecoration: 'none', display: 'inline-flex', alignItems: 'center' }}>
+            ← Back to Home
+          </Link>
           <Link href={`/track?id=${trackingId}`} className="btn-gold" style={{ fontSize: 15 }}>Track Status →</Link>
           <button onClick={() => {
             setStep('form');
@@ -213,8 +216,8 @@ export default function GivePage() {
                   onBlur={e => { e.target.style.borderColor='#e0ebe5'; e.target.style.boxShadow='none'; }} />
               </div>
               <div>
-                <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#1B5E38', marginBottom: 6 }}>Serves (no. of people)</label>
-                <input type="number" min="1" step="1" value={form.approx_kg} onChange={e => set('approx_kg', e.target.value)}
+                <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#1B5E38', marginBottom: 6 }}>Serves (no. of people) *</label>
+                <input required type="number" min="1" step="1" value={form.approx_kg} onChange={e => set('approx_kg', e.target.value)}
                   placeholder="e.g. 50" style={inputStyle}
                   onFocus={e => { e.target.style.borderColor='#0F3D1F'; e.target.style.boxShadow='0 0 0 3px rgba(10,46,30,0.08)'; }}
                   onBlur={e => { e.target.style.borderColor='#e0ebe5'; e.target.style.boxShadow='none'; }} />
@@ -248,17 +251,23 @@ export default function GivePage() {
                 <div style={{
                   display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                   background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 10,
-                  padding: '9px 14px', marginBottom: 10, gap: 8,
+                  padding: '9px 14px', marginBottom: 10, gap: 8, flexWrap: 'wrap',
                 }}>
                   <span style={{ color: '#166534', fontSize: 12, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 5 }}>
                     ✅ GPS location set
                   </span>
-                  <a
-                    href={`https://www.google.com/maps?q=${pinLat},${pinLng}`}
-                    target="_blank" rel="noopener noreferrer"
-                    style={{ color: '#1B5E38', fontSize: 12, fontWeight: 700, textDecoration: 'underline', flexShrink: 0 }}>
-                    Verify on Google Maps ↗
-                  </a>
+                  <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+                    <a
+                      href={`https://www.google.com/maps?q=${pinLat},${pinLng}`}
+                      target="_blank" rel="noopener noreferrer"
+                      style={{ color: '#1B5E38', fontSize: 12, fontWeight: 700, textDecoration: 'underline' }}>
+                      Verify ↗
+                    </a>
+                    <button type="button" onClick={() => { setPinLat(null); setPinLng(null); setGpsConfirmed(false); set('pickup_address', ''); }}
+                      style={{ color: '#dc2626', fontSize: 12, fontWeight: 600, background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline', padding: 0 }}>
+                      Remove
+                    </button>
+                  </div>
                 </div>
               )}
 
