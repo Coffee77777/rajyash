@@ -1,11 +1,8 @@
 'use client';
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useCallback } from 'react';
 import Link from 'next/link';
 
 const API = 'https://slipms.com/rajyash-api';
-// Default center: Ahmedabad
-const DEFAULT_LAT = 23.0225;
-const DEFAULT_LNG = 72.5714;
 
 export default function GivePage() {
   const [step, setStep] = useState<'form' | 'success'>('form');
@@ -20,132 +17,72 @@ export default function GivePage() {
   const [photoPreviews, setPhotoPreviews] = useState<string[]>([]);
   const fileRef = useRef<HTMLInputElement>(null);
 
-  // ── Map pin picker ────────────────────────────────────────────────
-  const [mapOpen, setMapOpen]           = useState(false);
-  const [mapReady, setMapReady]         = useState(false);
-  const [mapAddr, setMapAddr]           = useState('');
-  const [mapLoading, setMapLoading]     = useState(false);
-  const [gpsLoading, setGpsLoading]     = useState(false);
-  const [pinLat, setPinLat]             = useState<number | null>(null);
-  const [pinLng, setPinLng]             = useState<number | null>(null);
-  const mapDivRef  = useRef<HTMLDivElement>(null);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const leafletRef = useRef<any>(null);   // L instance
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const mapRef     = useRef<any>(null);   // map instance
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const markerRef  = useRef<any>(null);   // draggable marker
-  const latLngRef  = useRef<[number,number]>([DEFAULT_LAT, DEFAULT_LNG]);
+  // GPS / location state
+  const [gpsLoading, setGpsLoading]   = useState(false);
+  const [gpsConfirmed, setGpsConfirmed] = useState(false);
+  const [gpsError, setGpsError]       = useState('');
+  const [pinLat, setPinLat]           = useState<number | null>(null);
+  const [pinLng, setPinLng]           = useState<number | null>(null);
 
-  // Load Leaflet assets once
-  useEffect(() => {
-    if (mapReady || typeof window === 'undefined') return;
-    const linkEl = document.createElement('link');
-    linkEl.rel = 'stylesheet';
-    linkEl.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
-    document.head.appendChild(linkEl);
-    const scriptEl = document.createElement('script');
-    scriptEl.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
-    scriptEl.onload = () => setMapReady(true);
-    document.body.appendChild(scriptEl);
-  }, [mapReady]);
-
-  const reverseGeocode = useCallback(async (lat: number, lng: number) => {
-    setMapLoading(true);
-    setMapAddr('');
-    try {
-      const r = await fetch(
-        `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}`,
-        { headers: { 'Accept-Language': 'en' } }
-      );
-      const d = await r.json();
-      const a = d.address || {};
-      const parts = [a.road||a.pedestrian||a.footway, a.neighbourhood||a.suburb, a.city||a.town||a.village, a.state].filter(Boolean);
-      setMapAddr(parts.join(', ') || d.display_name || `${lat.toFixed(5)}, ${lng.toFixed(5)}`);
-    } catch { setMapAddr(`${lat.toFixed(5)}, ${lng.toFixed(5)}`); }
-    finally { setMapLoading(false); }
-  }, []);
-
-  // Initialise map when modal opens
-  useEffect(() => {
-    if (!mapOpen || !mapReady || !mapDivRef.current) return;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const L = (window as any).L;
-    leafletRef.current = L;
-    if (mapRef.current) { mapRef.current.remove(); mapRef.current = null; }
-
-    const map = L.map(mapDivRef.current, { zoomControl: true }).setView(latLngRef.current, 15);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '© OpenStreetMap contributors', maxZoom: 19
-    }).addTo(map);
-
-    // Custom green pin icon
-    const icon = L.divIcon({
-      html: '<div style="width:28px;height:28px;background:#0F3D1F;border-radius:50% 50% 50% 0;transform:rotate(-45deg);border:3px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,0.4)"></div>',
-      className: '', iconSize: [28,28], iconAnchor: [14,28], popupAnchor: [0,-30],
-    });
-    const marker = L.marker(latLngRef.current, { draggable: true, icon }).addTo(map);
-    markerRef.current = marker;
-
-    const onMove = (latlng: {lat:number;lng:number}) => {
-      latLngRef.current = [latlng.lat, latlng.lng];
-      reverseGeocode(latlng.lat, latlng.lng);
-    };
-    marker.on('dragend', (e: {target:{getLatLng:()=>{lat:number;lng:number}}}) => onMove(e.target.getLatLng()));
-    map.on('click', (e: {latlng:{lat:number;lng:number}}) => { marker.setLatLng(e.latlng); onMove(e.latlng); });
-    mapRef.current = map;
-
-    // Initial reverse geocode
-    reverseGeocode(latLngRef.current[0], latLngRef.current[1]);
-
-    return () => { /* keep map; removed when modal re-renders */ };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mapOpen, mapReady]);
-
-  const useGPS = useCallback(() => {
-    if (!navigator.geolocation) return;
+  const detectLocation = useCallback(() => {
+    if (!navigator.geolocation) {
+      setGpsError('GPS not available on this device. Please type the address.');
+      return;
+    }
     setGpsLoading(true);
+    setGpsError('');
+    setGpsConfirmed(false);
     navigator.geolocation.getCurrentPosition(
-      pos => {
+      async pos => {
         const { latitude: lat, longitude: lng } = pos.coords;
-        latLngRef.current = [lat, lng];
-        if (mapRef.current && markerRef.current) {
-          markerRef.current.setLatLng([lat, lng]);
-          mapRef.current.setView([lat, lng], 17);
+        setPinLat(lat);
+        setPinLng(lng);
+        // Reverse geocode via Nominatim for a human-readable label
+        try {
+          const r = await fetch(
+            `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}`,
+            { headers: { 'Accept-Language': 'en' } }
+          );
+          const d = await r.json();
+          const a = d.address || {};
+          const parts = [
+            a.road || a.pedestrian || a.footway || a.amenity,
+            a.neighbourhood || a.suburb,
+            a.city || a.town || a.village,
+            a.state,
+          ].filter(Boolean);
+          const addr = parts.join(', ') || d.display_name || `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+          setForm(f => ({ ...f, pickup_address: addr }));
+          setGpsConfirmed(true);
+        } catch {
+          setForm(f => ({ ...f, pickup_address: `${lat.toFixed(5)}, ${lng.toFixed(5)}` }));
+          setGpsConfirmed(true);
         }
-        reverseGeocode(lat, lng);
         setGpsLoading(false);
       },
-      () => setGpsLoading(false),
-      { enableHighAccuracy: true, timeout: 8000 }
+      err => {
+        setGpsLoading(false);
+        if (err.code === 1) setGpsError('Location permission denied. Please allow location access and try again.');
+        else setGpsError('Could not get your location. Please type the address manually.');
+      },
+      { enableHighAccuracy: true, timeout: 10000 }
     );
-  }, [reverseGeocode]);
-
-  const confirmPin = useCallback(() => {
-    if (mapAddr) set('pickup_address', mapAddr);
-    setPinLat(latLngRef.current[0]);
-    setPinLng(latLngRef.current[1]);
-    setMapOpen(false);
-  }, [mapAddr]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, []);
 
   function set(k: string, v: string) { setForm(f => ({ ...f, [k]: v })); }
 
   function handlePhotos(files: FileList | null) {
     if (!files || files.length === 0) return;
     const newFiles = Array.from(files).filter(f => f.size <= 10 * 1024 * 1024);
-    const combined = [...photos, ...newFiles].slice(0, 5); // max 5
+    const combined = [...photos, ...newFiles].slice(0, 5);
     setPhotos(combined);
-    combined.forEach((file, i) => {
-      if (photoPreviews[i]) return;
-      const reader = new FileReader();
-      reader.onload = e => setPhotoPreviews(prev => { const a = [...prev]; a[i] = e.target?.result as string; return a; });
-      reader.readAsDataURL(file);
-    });
-    // rebuild previews for all
     const previews: string[] = [];
     combined.forEach((file, i) => {
       const reader = new FileReader();
-      reader.onload = e => { previews[i] = e.target?.result as string; if (previews.filter(Boolean).length === combined.length) setPhotoPreviews([...previews]); };
+      reader.onload = e => {
+        previews[i] = e.target?.result as string;
+        if (previews.filter(Boolean).length === combined.length) setPhotoPreviews([...previews]);
+      };
       reader.readAsDataURL(file);
     });
   }
@@ -195,8 +132,12 @@ export default function GivePage() {
         </div>
         <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', justifyContent: 'center' }}>
           <Link href={`/track?id=${trackingId}`} className="btn-gold" style={{ fontSize: 15 }}>Track Status →</Link>
-          <button onClick={() => { setStep('form'); setForm({ donor_name:'',donor_phone:'',donor_address:'',food_type:'',approx_kg:'',ready_by:'',pickup_address:'' }); setPhotos([]); setPhotoPreviews([]); }}
-            style={{ padding: '13px 24px', borderRadius: 50, border: '1.5px solid #e0ebe5', background: '#fff', color: '#0F3D1F', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>
+          <button onClick={() => {
+            setStep('form');
+            setForm({ donor_name:'', donor_phone:'', donor_address:'', food_type:'', approx_kg:'', ready_by:'', pickup_address:'' });
+            setPhotos([]); setPhotoPreviews([]);
+            setPinLat(null); setPinLng(null); setGpsConfirmed(false);
+          }} style={{ padding: '13px 24px', borderRadius: 50, border: '1.5px solid #e0ebe5', background: '#fff', color: '#0F3D1F', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>
             Submit Another
           </button>
         </div>
@@ -229,7 +170,8 @@ export default function GivePage() {
 
         {/* Form card */}
         <form onSubmit={submit} style={{ background: '#fff', borderRadius: 24, padding: '40px 36px', boxShadow: '0 24px 80px rgba(0,0,0,0.3)' }}>
-          {/* Donor info */}
+
+          {/* ── YOUR INFORMATION ── */}
           <div style={{ marginBottom: 8 }}>
             <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '1.5px', color: '#C4963C', marginBottom: 18, textTransform: 'uppercase' }}>Your Information</div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 14 }}>
@@ -259,7 +201,7 @@ export default function GivePage() {
 
           <hr style={{ border: 'none', borderTop: '1.5px solid #f0ebe5', margin: '28px 0' }} />
 
-          {/* Food info */}
+          {/* ── FOOD DETAILS ── */}
           <div style={{ marginBottom: 8 }}>
             <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '1.5px', color: '#C4963C', marginBottom: 18, textTransform: 'uppercase' }}>Food Details</div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 14 }}>
@@ -278,19 +220,71 @@ export default function GivePage() {
                   onBlur={e => { e.target.style.borderColor='#e0ebe5'; e.target.style.boxShadow='none'; }} />
               </div>
             </div>
+
+            {/* ── PICKUP ADDRESS with GPS ── */}
             <div style={{ marginBottom: 14 }}>
-              <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom: 6 }}>
-                <label style={{ fontSize: 12, fontWeight: 600, color: '#1B5E38' }}>Pickup Address *</label>
-                <button type="button" onClick={() => setMapOpen(true)}
-                  style={{ display:'flex', alignItems:'center', gap:5, padding:'4px 12px', borderRadius:20, border:'1.5px solid #1B5E38', background:'#f0fdf4', color:'#1B5E38', fontSize:12, fontWeight:700, cursor:'pointer' }}>
-                  📍 Drop Pin
-                </button>
-              </div>
-              <input required value={form.pickup_address} onChange={e => set('pickup_address', e.target.value)}
-                placeholder="Type address or use Drop Pin →" style={inputStyle}
+              <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#1B5E38', marginBottom: 8 }}>
+                Pickup Address *
+              </label>
+
+              {/* GPS detect button */}
+              <button type="button" onClick={detectLocation} disabled={gpsLoading}
+                style={{
+                  width: '100%', padding: '12px 16px', marginBottom: 10,
+                  borderRadius: 12, border: '1.5px solid #1B5E38',
+                  background: gpsLoading ? '#f0fdf4' : 'linear-gradient(135deg,#f0fdf4,#dcfce7)',
+                  color: '#1B5E38', fontSize: 14, fontWeight: 700,
+                  cursor: gpsLoading ? 'not-allowed' : 'pointer',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                  transition: 'all 0.2s', boxSizing: 'border-box',
+                }}>
+                {gpsLoading
+                  ? <><span style={{ fontSize: 16 }}>⏳</span> Detecting your location…</>
+                  : <><span style={{ fontSize: 16 }}>🎯</span> Detect My Location (GPS)</>}
+              </button>
+
+              {/* GPS confirmed banner */}
+              {gpsConfirmed && pinLat && pinLng && (
+                <div style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                  background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 10,
+                  padding: '9px 14px', marginBottom: 10, gap: 8,
+                }}>
+                  <span style={{ color: '#166534', fontSize: 12, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 5 }}>
+                    ✅ GPS location set
+                  </span>
+                  <a
+                    href={`https://www.google.com/maps?q=${pinLat},${pinLng}`}
+                    target="_blank" rel="noopener noreferrer"
+                    style={{ color: '#1B5E38', fontSize: 12, fontWeight: 700, textDecoration: 'underline', flexShrink: 0 }}>
+                    Verify on Google Maps ↗
+                  </a>
+                </div>
+              )}
+
+              {/* GPS error */}
+              {gpsError && (
+                <div style={{ background: '#fef2f2', border: '1px solid #fca5a5', borderRadius: 10, padding: '9px 14px', color: '#dc2626', fontSize: 12, fontWeight: 600, marginBottom: 10 }}>
+                  ⚠️ {gpsError}
+                </div>
+              )}
+
+              {/* Address text field */}
+              <input required value={form.pickup_address}
+                onChange={e => {
+                  set('pickup_address', e.target.value);
+                  // If user edits manually after GPS, clear pin coords
+                  if (gpsConfirmed) { setPinLat(null); setPinLng(null); setGpsConfirmed(false); }
+                }}
+                placeholder="Or type address: Building, Street, Area, City"
+                style={inputStyle}
                 onFocus={e => { e.target.style.borderColor='#0F3D1F'; e.target.style.boxShadow='0 0 0 3px rgba(10,46,30,0.08)'; }}
                 onBlur={e => { e.target.style.borderColor='#e0ebe5'; e.target.style.boxShadow='none'; }} />
+              <p style={{ fontSize: 11, color: '#A8B5AD', marginTop: 5 }}>
+                GPS gives the driver your exact location. You can also type or edit the address above.
+              </p>
             </div>
+
             <div>
               <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#1B5E38', marginBottom: 6 }}>Ready for Pickup By *</label>
               <input required type="datetime-local" value={form.ready_by} onChange={e => set('ready_by', e.target.value)}
@@ -302,29 +296,23 @@ export default function GivePage() {
 
           <hr style={{ border: 'none', borderTop: '1.5px solid #f0ebe5', margin: '28px 0' }} />
 
-          {/* Photo upload */}
+          {/* ── FOOD PHOTOS ── */}
           <div style={{ marginBottom: 8 }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 }}>
               <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '1.5px', color: '#C4963C', textTransform: 'uppercase' }}>Food Photos (Optional)</div>
               {photos.length > 0 && photos.length < 5 && (
-                <span style={{ fontSize: 12, color: '#1B5E38', fontWeight: 600, cursor: 'pointer', textDecoration: 'underline' }} onClick={() => { if (fileRef.current) { fileRef.current.value = ''; fileRef.current.click(); } }}>+ Add more</span>
+                <span style={{ fontSize: 12, color: '#1B5E38', fontWeight: 600, cursor: 'pointer', textDecoration: 'underline' }}
+                  onClick={() => { if (fileRef.current) { fileRef.current.value = ''; fileRef.current.click(); } }}>+ Add more</span>
               )}
             </div>
-            <input
-              ref={fileRef} type="file" accept="image/*" multiple
-              style={{ display: 'none' }}
-              onChange={e => handlePhotos(e.target.files)}
-            />
+            <input ref={fileRef} type="file" accept="image/*" multiple style={{ display: 'none' }}
+              onChange={e => handlePhotos(e.target.files)} />
             {photos.length === 0 ? (
-              <div
-                onClick={() => fileRef.current?.click()}
+              <div onClick={() => fileRef.current?.click()}
                 onDragOver={e => { e.preventDefault(); e.currentTarget.style.borderColor='#0F3D1F'; e.currentTarget.style.background='#f0f7f0'; }}
                 onDragLeave={e => { e.currentTarget.style.borderColor='#DDE8D8'; e.currentTarget.style.background='#FDFBF7'; }}
                 onDrop={e => { e.preventDefault(); handlePhotos(e.dataTransfer.files); e.currentTarget.style.borderColor='#DDE8D8'; e.currentTarget.style.background='#FDFBF7'; }}
-                style={{
-                  border: '2px dashed #DDE8D8', borderRadius: 14, padding: '28px 20px',
-                  textAlign: 'center', cursor: 'pointer', background: '#FDFBF7', transition: 'all 0.2s',
-                }}>
+                style={{ border: '2px dashed #DDE8D8', borderRadius: 14, padding: '28px 20px', textAlign: 'center', cursor: 'pointer', background: '#FDFBF7', transition: 'all 0.2s' }}>
                 <div style={{ fontSize: 32, marginBottom: 8 }}>📸</div>
                 <div style={{ fontSize: 14, fontWeight: 600, color: '#0F3D1F', marginBottom: 4 }}>Tap to add photos</div>
                 <div style={{ fontSize: 12, color: '#A8B5AD' }}>Up to 5 photos · JPG, PNG or WebP · Max 10 MB each</div>
@@ -356,7 +344,8 @@ export default function GivePage() {
             </div>
           )}
 
-          <button type="submit" disabled={loading} className="btn-gold" style={{ width: '100%', justifyContent: 'center', marginTop: 28, fontSize: 16, padding: '16px', opacity: loading ? 0.7 : 1 }}>
+          <button type="submit" disabled={loading} className="btn-gold"
+            style={{ width: '100%', justifyContent: 'center', marginTop: 28, fontSize: 16, padding: '16px', opacity: loading ? 0.7 : 1 }}>
             {loading ? 'Submitting…' : 'Submit Pickup Request →'}
           </button>
 
@@ -365,41 +354,6 @@ export default function GivePage() {
           </p>
         </form>
       </div>
-
-      {/* ── MAP PIN PICKER MODAL ── */}
-      {mapOpen && (
-        <div style={{ position:'fixed', inset:0, zIndex:300, display:'flex', flexDirection:'column' }}
-          onClick={e => { if (e.target === e.currentTarget) setMapOpen(false); }}>
-          {/* Header bar */}
-          <div style={{ background:'#0F3D1F', padding:'14px 20px', display:'flex', alignItems:'center', justifyContent:'space-between', flexShrink:0 }}>
-            <div>
-              <div style={{ color:'#fff', fontWeight:800, fontSize:16 }}>📍 Drop Pin — Pickup Location</div>
-              <div style={{ color:'rgba(255,255,255,0.55)', fontSize:12, marginTop:2 }}>Tap the map or drag the pin</div>
-            </div>
-            <button onClick={() => setMapOpen(false)} style={{ background:'rgba(255,255,255,0.12)', border:'none', color:'#fff', fontSize:20, width:36, height:36, borderRadius:'50%', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center' }}>✕</button>
-          </div>
-
-          {/* Map */}
-          <div ref={mapDivRef} style={{ flex:1, minHeight:0 }} />
-
-          {/* Bottom sheet */}
-          <div style={{ background:'#fff', padding:'16px 20px 24px', borderTop:'1.5px solid #e0ebe5', flexShrink:0, boxShadow:'0 -4px 20px rgba(0,0,0,0.12)' }}>
-            <div style={{ display:'flex', gap:10, marginBottom:14 }}>
-              <button type="button" onClick={useGPS} disabled={gpsLoading}
-                style={{ flex:1, padding:'10px', borderRadius:10, border:'1.5px solid #1B5E38', background:'#f0fdf4', color:'#1B5E38', fontSize:13, fontWeight:700, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:6 }}>
-                {gpsLoading ? '…' : '🎯 Use My Location'}
-              </button>
-            </div>
-            <div style={{ background:'#FDFBF7', border:'1.5px solid #e0ebe5', borderRadius:10, padding:'10px 14px', marginBottom:14, minHeight:42, fontSize:13, color:'#0F3D1F', fontWeight:500 }}>
-              {mapLoading ? <span style={{ color:'#A8B5AD' }}>Getting address…</span> : mapAddr || <span style={{ color:'#A8B5AD' }}>Tap map to pick location</span>}
-            </div>
-            <button type="button" onClick={confirmPin} disabled={!mapAddr || mapLoading}
-              style={{ width:'100%', padding:'14px', borderRadius:12, border:'none', background: (!mapAddr||mapLoading)?'#e0ebe5':'linear-gradient(135deg,#1B5E38,#0F3D1F)', color:(!mapAddr||mapLoading)?'#A8B5AD':'#fff', fontSize:15, fontWeight:800, cursor:(!mapAddr||mapLoading)?'not-allowed':'pointer' }}>
-              Confirm This Location →
-            </button>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
